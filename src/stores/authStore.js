@@ -20,7 +20,10 @@ export const useAuthStore = defineStore('auth', {
       this.user = {
         idUsuario: payload.IdUsuario,
         correo: payload.sub,
-        rol: payload.Rol
+        rol: payload.Rol,
+        nombres: payload.Nombres,
+        apellidos: payload.Apellidos,
+        nombreCompleto: payload.NombreCompleto
       }
       LocalStorage.set('authToken', this.token)
       LocalStorage.set('currentUser', this.user)

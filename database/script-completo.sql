@@ -79,7 +79,9 @@ BEGIN
     CREATE TABLE Usuarios (
         IdUsuario           BIGINT        NOT NULL IDENTITY(1,1),
         IdRol               INT           NOT NULL,
-        NombreCompleto      VARCHAR(150)  NOT NULL,
+        Nombres             VARCHAR(100)  NOT NULL,
+        Apellidos           VARCHAR(100)  NOT NULL,
+        NombreCompleto      AS (Nombres + ' ' + Apellidos),
         Correo              VARCHAR(150)  NOT NULL,
         Telefono            VARCHAR(20)   NOT NULL,
         DocumentoIdentidad  VARCHAR(20)   NOT NULL,
@@ -503,8 +505,8 @@ GO
 IF NOT EXISTS (SELECT 1 FROM Usuarios WHERE Correo = 'admin@exchange-pro.com')
 BEGIN
     -- Insertar admin
-    INSERT INTO Usuarios (IdRol, NombreCompleto, Correo, Telefono, DocumentoIdentidad, PasswordHash)
-    VALUES (2, 'Admin', 'admin@exchange-pro.com', '999999999', '00000000', '$2a$11$KHz7c3tYzCwKY5bEcc4Bk.7W.VlZbJvBa0aBVL9VggOGhzbHWf9.O');
+    INSERT INTO Usuarios (IdRol, Nombres, Apellidos, Correo, Telefono, DocumentoIdentidad, PasswordHash)
+    VALUES (2, 'Admin', 'ExchangePro', 'admin@exchange-pro.com', '999999999', '00000000', '$2a$11$KHz7c3tYzCwKY5bEcc4Bk.7W.VlZbJvBa0aBVL9VggOGhzbHWf9.O');
 
     -- Crear wallet para admin
     INSERT INTO Wallets (IdUsuario)

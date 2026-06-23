@@ -30,7 +30,7 @@
           @change="onFotoChange"
         />
         <div class="profile-hero__info">
-          <h2 class="profile-hero__name font-display">{{ perfil.nombreCompleto || '—' }}</h2>
+          <h2 class="profile-hero__name font-display">{{ perfil.nombres || perfil.nombreCompleto || '—' }}</h2>
           <div class="profile-hero__reputation" v-if="perfil.reputacion != null">
             <div class="stars-row">
               <q-icon
@@ -54,18 +54,33 @@
             <h3 class="form-card__title font-display">Información Personal</h3>
           </div>
           <div class="form-card__body">
-            <div class="field-group">
-              <label class="field-label">Nombre Completo</label>
-              <q-input
-                v-model="perfil.nombreCompleto"
-                outlined
-                dense
-                dark
-                placeholder="Tu nombre completo"
-                class="form-input"
-                :rules="[val => !!val || 'El nombre es requerido']"
-                hide-bottom-space
-              />
+            <div class="field-row">
+              <div class="field-group flex-1">
+                <label class="field-label">Nombres</label>
+                <q-input
+                  v-model="perfil.nombres"
+                  outlined
+                  dense
+                  dark
+                  placeholder="Tus nombres"
+                  class="form-input"
+                  :rules="[val => !!val || 'Los nombres son requeridos']"
+                  hide-bottom-space
+                />
+              </div>
+              <div class="field-group flex-1">
+                <label class="field-label">Apellidos</label>
+                <q-input
+                  v-model="perfil.apellidos"
+                  outlined
+                  dense
+                  dark
+                  placeholder="Tus apellidos"
+                  class="form-input"
+                  :rules="[val => !!val || 'Los apellidos son requeridos']"
+                  hide-bottom-space
+                />
+              </div>
             </div>
             <div class="field-group">
               <label class="field-label">Correo Electrónico</label>
@@ -144,8 +159,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import perfilService from '@/services/perfilService'
+import { useAuthStore } from '@/stores/authStore'
 
+const API_BASE_URL = 'http://localhost:5238'
 const $q = useQuasar()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -153,6 +171,8 @@ const fotoInput = ref(null)
 const fotoUrl = ref(null)
 
 const perfil = reactive({
+  nombres: '',
+  apellidos: '',
   nombreCompleto: '',
   correo: '',
   documentoIdentidad: '',
@@ -173,7 +193,8 @@ function onFotoChange(e) {
   reader.onload = async () => {
     fotoUrl.value = reader.result
     try {
-      await perfilService.subirFoto(file)
+      const resp = await perfilService.subirFoto(file)
+      perfil.rutaFoto = resp.ruta
       $q.notify({ type: 'positive', message: 'Foto actualizada', position: 'top' })
     } catch {
       $q.notify({ type: 'negative', message: 'Error al subir foto', position: 'top' })
@@ -186,15 +207,17 @@ onMounted(async () => {
   try {
     const data = await perfilService.obtener()
     if (data) {
+      perfil.nombres = data.nombres || ''
+      perfil.apellidos = data.apellidos || ''
       perfil.nombreCompleto = data.nombreCompleto || ''
       perfil.correo = data.correo || ''
       perfil.documentoIdentidad = data.documentoIdentidad || ''
       perfil.telefono = data.telefono || ''
       perfil.reputacion = data.reputacion
       perfil.totalCalificaciones = data.totalCalificaciones || 0
-      perfil.rutaFoto = data.rutaFoto
-      if (data.rutaFoto) {
-        fotoUrl.value = data.rutaFoto
+      perfil.rutaFoto = data.fotoPerfil || data.rutaFoto || ''
+      if (perfil.rutaFoto) {
+        fotoUrl.value = `${API_BASE_URL}${perfil.rutaFoto}`
       }
     }
   } catch {
@@ -208,9 +231,13 @@ const guardarPerfil = async () => {
   saving.value = true
   try {
     await perfilService.actualizar({
-      nombreCompleto: perfil.nombreCompleto,
+      nombres: perfil.nombres,
+      apellidos: perfil.apellidos,
       telefono: perfil.telefono
     })
+    authStore.user.nombres = perfil.nombres
+    authStore.user.apellidos = perfil.apellidos
+    authStore.user.nombreCompleto = `${perfil.nombres} ${perfil.apellidos}`
     $q.notify({ type: 'positive', message: 'Perfil actualizado exitosamente', position: 'top' })
   } catch {
     $q.notify({ type: 'negative', message: 'Error al guardar perfil', position: 'top' })
@@ -369,6 +396,15 @@ const guardarPerfil = async () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.flex-1 {
+  flex: 1;
 }
 
 .field-label {

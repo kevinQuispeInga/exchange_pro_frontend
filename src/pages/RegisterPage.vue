@@ -19,15 +19,35 @@
         <p class="auth-subtitle">Únete a la plataforma de intercambio P2P</p>
         <q-form @submit="onSubmit" class="auth-form">
           <div class="row q-col-gutter-sm">
-            <div class="col-12">
+            <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Nombre completo</label>
+                <label class="field-label">Nombres</label>
                 <q-input
-                  v-model="form.nombreCompleto"
+                  v-model="form.nombres"
                   outlined
                   dense
                   dark
-                  placeholder="Ej: Juan Pérez"
+                  placeholder="Ej: Juan"
+                  class="auth-input"
+                  maxlength="100"
+                  :rules="[val => !!val || 'Requerido']"
+                  hide-bottom-space
+                >
+                  <template v-slot:prepend
+                    ><q-icon name="person" size="18px" class="input-icon"
+                  /></template>
+                </q-input>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="field-group">
+                <label class="field-label">Apellidos</label>
+                <q-input
+                  v-model="form.apellidos"
+                  outlined
+                  dense
+                  dark
+                  placeholder="Ej: Pérez"
                   class="auth-input"
                   maxlength="100"
                   :rules="[val => !!val || 'Requerido']"
@@ -209,7 +229,8 @@ const $q = useQuasar()
 const authStore = useAuthStore()
 
 const form = reactive({
-  nombreCompleto: '',
+  nombres: '',
+  apellidos: '',
   correo: '',
   telefono: '',
   documentoIdentidad: '',
@@ -224,7 +245,10 @@ const loading = ref(false)
 async function onSubmit() {
   loading.value = true
   try {
-    await authStore.registrar({ ...form })
+    await authStore.registrar({
+      ...form,
+      nombreCompleto: `${form.nombres} ${form.apellidos}`.trim()
+    })
     $q.notify({
       type: 'positive',
       message: 'Cuenta creada exitosamente',

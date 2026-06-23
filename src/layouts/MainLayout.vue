@@ -34,7 +34,7 @@
                 <q-icon name="person" size="18px" />
               </q-avatar>
               <span class="user-name q-ml-sm">{{
-                authStore.user?.correo?.split('@')[0] || 'User'
+                authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'User'
               }}</span>
               <q-icon name="arrow_drop_down" size="20px" class="q-ml-xs" />
             </div>

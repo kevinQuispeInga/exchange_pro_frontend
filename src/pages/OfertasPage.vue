@@ -85,7 +85,7 @@
           <div class="oferta-card__stat">
             <span class="stat-label">Tasa</span>
             <span class="stat-value font-mono text-accent">{{
-              formatNumber(oferta.tasaCambio)
+              formatNumber(oferta.tasaCambio, 3)
             }}</span>
           </div>
           <div class="oferta-card__divider"></div>
@@ -171,7 +171,7 @@
               <div class="dialog-info__row">
                 <span class="dialog-info__label">Tasa</span>
                 <span class="dialog-info__value font-mono text-accent">{{
-                  formatNumber(ofertaSeleccionada?.tasaCambio)
+                  formatNumber(ofertaSeleccionada?.tasaCambio, 3)
                 }}</span>
               </div>
             </div>
@@ -230,7 +230,14 @@
                 <template v-else>
                   Equivale a
                   <strong
-                    >{{ formatNumber(montoOperacion) }}
+                    >{{
+                      formatNumber(
+                        calcularMontoRecibe(
+                          montoInput,
+                          ofertaSeleccionada?.tasaCambio
+                        )
+                      )
+                    }}
                     {{
                       currencySymbol(null, ofertaSeleccionada?.monedaRecibeCode)
                     }}</strong
@@ -243,7 +250,7 @@
               <label class="field-label">Método de pago</label>
               <q-select
                 v-model="metodoPago"
-                :options="opcionesMetodoPago"
+                :options="metodosDisponibles"
                 outlined
                 dense
                 dark
@@ -333,7 +340,7 @@
                 <span class="instruc-value font-mono"
                   >1
                   {{ currencySymbol(null, instrucciones.monedaRecibeCode) }} ≈
-                  {{ formatNumber(instrucciones.tasaCambio) }}
+                  {{ formatNumber(instrucciones.tasaCambio, 3) }}
                   {{
                     currencySymbol(null, instrucciones.monedaEntregaCode)
                   }}</span
@@ -342,42 +349,71 @@
               <div class="instruc-card">
                 <span class="instruc-label">Datos del vendedor</span>
                 <div class="instruc-data">
-                  <div
-                    v-if="instrucciones.datosDelVendedor?.yape"
-                    class="data-row"
-                  >
-                    <span class="data-label">Yape:</span>
-                    <span class="data-value font-mono">{{
-                      instrucciones.datosDelVendedor.yape
-                    }}</span>
-                  </div>
-                  <div
-                    v-if="instrucciones.datosDelVendedor?.plin"
-                    class="data-row"
-                  >
-                    <span class="data-label">Plin:</span>
-                    <span class="data-value font-mono">{{
-                      instrucciones.datosDelVendedor.plin
-                    }}</span>
-                  </div>
-                  <div
-                    v-if="instrucciones.datosDelVendedor?.numeroCuenta"
-                    class="data-row"
-                  >
-                    <span class="data-label">Cuenta:</span>
-                    <span class="data-value font-mono">{{
-                      instrucciones.datosDelVendedor.numeroCuenta
-                    }}</span>
-                  </div>
-                  <div
-                    v-if="instrucciones.datosDelVendedor?.cci"
-                    class="data-row"
-                  >
-                    <span class="data-label">CCI:</span>
-                    <span class="data-value font-mono">{{
-                      instrucciones.datosDelVendedor.cci
-                    }}</span>
-                  </div>
+                  <template v-if="metodoPago === 1">
+                    <div
+                      v-if="instrucciones.datosDelVendedor?.yape"
+                      class="data-row"
+                    >
+                      <span class="data-label">Yape:</span>
+                      <span class="data-value font-mono">{{
+                        instrucciones.datosDelVendedor.yape
+                      }}</span>
+                      <q-btn
+                        flat dense round size="sm" icon="content_copy"
+                        class="copy-btn"
+                        @click="copiar(instrucciones.datosDelVendedor.yape)"
+                      />
+                    </div>
+                    <p v-else class="text-grey text-caption q-mt-sm">El vendedor no tiene Yape registrado</p>
+                  </template>
+                  <template v-else-if="metodoPago === 2">
+                    <div
+                      v-if="instrucciones.datosDelVendedor?.plin"
+                      class="data-row"
+                    >
+                      <span class="data-label">Plin:</span>
+                      <span class="data-value font-mono">{{
+                        instrucciones.datosDelVendedor.plin
+                      }}</span>
+                      <q-btn
+                        flat dense round size="sm" icon="content_copy"
+                        class="copy-btn"
+                        @click="copiar(instrucciones.datosDelVendedor.plin)"
+                      />
+                    </div>
+                    <p v-else class="text-grey text-caption q-mt-sm">El vendedor no tiene Plin registrado</p>
+                  </template>
+                  <template v-else-if="metodoPago === 3">
+                    <div
+                      v-if="instrucciones.datosDelVendedor?.numeroCuenta"
+                      class="data-row"
+                    >
+                      <span class="data-label">Cuenta:</span>
+                      <span class="data-value font-mono">{{
+                        instrucciones.datosDelVendedor.numeroCuenta
+                      }}</span>
+                      <q-btn
+                        flat dense round size="sm" icon="content_copy"
+                        class="copy-btn"
+                        @click="copiar(instrucciones.datosDelVendedor.numeroCuenta)"
+                      />
+                    </div>
+                    <div
+                      v-if="instrucciones.datosDelVendedor?.cci"
+                      class="data-row"
+                    >
+                      <span class="data-label">CCI:</span>
+                      <span class="data-value font-mono">{{
+                        instrucciones.datosDelVendedor.cci
+                      }}</span>
+                      <q-btn
+                        flat dense round size="sm" icon="content_copy"
+                        class="copy-btn"
+                        @click="copiar(instrucciones.datosDelVendedor.cci)"
+                      />
+                    </div>
+                    <p v-if="!instrucciones.datosDelVendedor?.numeroCuenta && !instrucciones.datosDelVendedor?.cci" class="text-grey text-caption q-mt-sm">El vendedor no tiene cuenta bancaria registrada</p>
+                  </template>
                 </div>
               </div>
               <div class="instruc-note">
@@ -500,6 +536,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useOfertaStore } from '@/stores/ofertaStore'
 import { useTransaccionStore } from '@/stores/transaccionStore'
 import transaccionService from '@/services/transaccionService'
+import datosPagoService from '@/services/datosPagoService'
 import EmptyState from '@/components/EmptyState.vue'
 import { currencySymbol } from '@/utils/formatCurrency'
 
@@ -518,14 +555,8 @@ const montoInput = ref(null)
 const instrucciones = ref(null)
 
 const montoOperacion = computed(() => {
-  if (!montoInput.value || !ofertaSeleccionada.value?.tasaCambio) return 0
-  if (ofertaSeleccionada.value.tipoOperacion === 'COMPRA') {
-    return montoInput.value
-  }
-  return convertirRecibeAEntrega(
-    montoInput.value,
-    ofertaSeleccionada.value.tasaCambio
-  )
+  if (!montoInput.value) return 0
+  return montoInput.value
 })
 const transaccionId = ref(null)
 const selectedFile = ref(null)
@@ -543,23 +574,42 @@ const opcionesMetodoPago = [
   { label: 'Wallet Interna', value: 4, icon: 'account_balance_wallet' }
 ]
 
+const metodosDisponibles = ref([...opcionesMetodoPago])
+
 const ofertasVisibles = computed(() => {
   const uid = authStore.userId
   if (uid == null) return ofertaStore.ofertas
   return ofertaStore.ofertas.filter(o => Number(o.idUsuario) !== Number(uid))
 })
 
-function formatNumber(val) {
+function formatNumber(val, decimals = 2) {
   if (val == null) return '0.00'
   return Number(val).toLocaleString('es-PE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals
   })
+}
+
+function redondearTasa(tasa) {
+  if (!tasa) return 0
+  return Math.round(tasa * 1000) / 1000
 }
 
 function calcularMontoRecibe(monto, tasa) {
   if (!monto || !tasa) return 0
-  return monto * tasa
+  return Math.round(monto * redondearTasa(tasa) * 100) / 100
+}
+
+function calcularMontoRecibir(monto, tasa) {
+  if (!monto) return 0
+  return Math.round(monto * redondearTasa(tasa) * 100) / 100
+}
+
+function copiar(texto) {
+  if (!texto) return
+  navigator.clipboard.writeText(String(texto)).then(() => {
+    $q.notify({ type: 'positive', message: 'Copiado', position: 'top' })
+  })
 }
 
 function convertirRecibeAEntrega(montoRecibe, tasa) {
@@ -583,11 +633,30 @@ function getMetodoLabel(val) {
   return opt?.label || ''
 }
 
-function abrirDialogo(oferta) {
+async function abrirDialogo(oferta) {
   ofertaSeleccionada.value = oferta
   metodoPago.value = null
   montoInput.value = null
   dialogoVisible.value = true
+  try {
+    await cargarMetodosDisponibles(oferta.idUsuario)
+  } catch {
+    metodosDisponibles.value = [...opcionesMetodoPago]
+  }
+}
+
+async function cargarMetodosDisponibles(idUsuario) {
+  const data = await datosPagoService.obtenerPorUsuario(idUsuario)
+  const registros = Array.isArray(data) ? data : []
+  const tieneYape = registros.some(r => !!r.yape)
+  const tienePlin = registros.some(r => !!r.plin)
+  const tieneBanco = registros.some(r => !!r.numeroCuenta || !!r.cci)
+  metodosDisponibles.value = opcionesMetodoPago.filter(m =>
+    m.value === 1 ? tieneYape
+      : m.value === 2 ? tienePlin
+        : m.value === 3 ? tieneBanco
+          : true
+  )
 }
 
 async function tomarOferta() {
@@ -603,13 +672,28 @@ async function tomarOferta() {
     const tid = data.idTransaccion || data
     transaccionId.value = tid
 
-    // Después de crear la transacción, siempre traemos las instrucciones de pago
-    // y las mostramos en el mismo diálogo para que el usuario vea los datos (Yape/Plin/cuenta)
-    // y pueda subir el comprobante inmediatamente.
     const inst = await transaccionService.getInstruccionesPago(tid)
+
+    if (inst && ofertaSeleccionada.value) {
+      if (ofertaSeleccionada.value.tipoOperacion === 'VENTA') {
+        const tmpRecibe = inst.montoRecibe
+        const tmpCodigo = inst.monedaRecibeCode
+        inst.montoRecibe = inst.montoADepositar
+        inst.monedaRecibeCode = inst.monedaEntregaCode
+        inst.montoADepositar = calcularMontoRecibir(
+          montoInput.value,
+          ofertaSeleccionada.value.tasaCambio
+        )
+        inst.monedaEntregaCode = tmpCodigo
+      } else {
+        inst.montoRecibe = calcularMontoRecibir(
+          montoInput.value,
+          ofertaSeleccionada.value.tasaCambio
+        )
+      }
+    }
     instrucciones.value = inst
     await transaccionStore.listarMisOperaciones()
-    // dejamos el diálogo abierto (dialogoVisible === true) para mostrar el paso 2
   } catch (error) {
     const res = error.response
     let msg = 'Error al tomar la oferta'
@@ -1091,7 +1175,8 @@ onMounted(async () => {
 
 .data-row {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   padding: 4px 0;
 }
 
@@ -1099,12 +1184,22 @@ onMounted(async () => {
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--color-text-secondary);
+  flex-shrink: 0;
 }
 
 .data-value {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.copy-btn {
+  color: var(--color-accent);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.copy-btn:hover {
+  opacity: 1;
 }
 
 .instruc-note {

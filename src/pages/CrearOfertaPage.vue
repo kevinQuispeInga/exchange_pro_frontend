@@ -65,6 +65,57 @@
             </div>
             <div class="col-12 col-sm-6">
               <div class="field-group">
+                <label class="field-label">{{
+                  form.tipoOperacion === 'COMPRA'
+                    ? 'Moneda a Comprar'
+                    : 'Moneda a Vender'
+                }}</label>
+                <q-select
+                  v-model="form.monedaEntrega"
+                  :options="opcionesMonedaEntrega"
+                  outlined
+                  dense
+                  dark
+                  placeholder="Seleccionar"
+                  class="form-input"
+                  emit-value
+                  map-options
+                  popup-content-class="select-popup-dark"
+                  :rules="[val => !!val || 'Requerido']"
+                  hide-bottom-space
+                  @update:model-value="limpiarMonedaRecibe"
+                />
+              </div>
+            </div>
+            <div class="col-12 col-sm-6">
+              <div class="field-group">
+                <label class="field-label">{{
+                  form.tipoOperacion === 'COMPRA'
+                    ? 'Moneda a Pagar'
+                    : 'Moneda a Recibir'
+                }}</label>
+                <q-select
+                  v-model="form.monedaRecibe"
+                  :options="opcionesMonedaRecibe"
+                  outlined
+                  dense
+                  dark
+                  placeholder="Seleccionar"
+                  class="form-input"
+                  emit-value
+                  map-options
+                  popup-content-class="select-popup-dark"
+                  :rules="[val => !!val || 'Requerido']"
+                  hide-bottom-space
+                  @update:model-value="limpiarMonedaEntrega"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-12 col-sm-6">
+              <div class="field-group">
                 <label class="field-label">Tasa de Cambio</label>
                 <q-select
                   v-model="form.tasaCambio"
@@ -79,7 +130,12 @@
                   popup-content-class="select-popup-dark"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
+                  :loading="cargandoTasa"
+                  :disable="!form.monedaEntrega || !form.monedaRecibe"
                 />
+                <div v-if="descripcionTasa" class="tasa-descripcion">
+                  {{ descripcionTasa }}
+                </div>
               </div>
             </div>
           </div>
@@ -87,56 +143,7 @@
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">{{
-                  form.tipoOperacion === 'COMPRA'
-                    ? 'Moneda a Comprar'
-                    : 'Moneda a Vender'
-                }}</label>
-                <q-select
-                  v-model="form.monedaEntrega"
-                  :options="opcionesMoneda"
-                  outlined
-                  dense
-                  dark
-                  placeholder="Seleccionar"
-                  class="form-input"
-                  emit-value
-                  map-options
-                  popup-content-class="select-popup-dark"
-                  :rules="[val => !!val || 'Requerido']"
-                  hide-bottom-space
-                />
-              </div>
-            </div>
-            <div class="col-12 col-sm-6">
-              <div class="field-group">
-                <label class="field-label">{{
-                  form.tipoOperacion === 'COMPRA'
-                    ? 'Moneda a Pagar'
-                    : 'Moneda a Recibir'
-                }}</label>
-                <q-select
-                  v-model="form.monedaRecibe"
-                  :options="opcionesMoneda"
-                  outlined
-                  dense
-                  dark
-                  placeholder="Seleccionar"
-                  class="form-input"
-                  emit-value
-                  map-options
-                  popup-content-class="select-popup-dark"
-                  :rules="[val => !!val || 'Requerido']"
-                  hide-bottom-space
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="row q-col-gutter-md">
-            <div class="col-12 col-sm-6">
-              <div class="field-group">
-                <label class="field-label">Monto a Ofertado ({{ monedaLabel(form.monedaEntrega) }})</label>
+                <label class="field-label">Monto a Ofertar ({{ monedaLabel(form.monedaEntrega) }})</label>
                 <q-input
                   v-model.number="form.montoOfertado"
                   type="number"
@@ -158,17 +165,17 @@
                   class="conversion-preview"
                 >
                   <span v-if="form.tipoOperacion === 'COMPRA'">
-                      Pagarás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio)) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                      Pagarás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
                     </span>
                     <span v-else>
-                      Recibirás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio)) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                      Recibirás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
                   </span>
                 </div>
               </div>
             </div>
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Monto Mínimo ({{ monedaLabel(form.monedaEntrega) }})</label>
+                <label class="field-label">Monto Mínimo por operación ({{ monedaLabel(form.monedaEntrega) }})</label>
                 <q-input
                   v-model.number="form.montoMinimo"
                   type="number"
@@ -180,10 +187,11 @@
                   :rules="[
                     val => !!val || 'Requerido',
                     val => val > 0 || 'Debe ser > 0',
-                    val => val <= form.montoOfertado || 'No > al ofertado'
+                    val => val <= form.montoOfertado || 'No puede superar el monto a ofertar'
                   ]"
                   hide-bottom-space
                 />
+                <div class="field-hint">Monto mínimo que aceptarás por transacción</div>
               </div>
             </div>
           </div>
@@ -214,12 +222,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useOfertaStore } from '@/stores/ofertaStore'
 import { useWalletStore } from '@/stores/walletStore'
 import { currencySymbol } from '@/utils/formatCurrency'
+import tipoCambioService from '@/services/tipoCambioService'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -237,27 +246,52 @@ const opcionesMoneda = [
   { label: 'GBP (Libras)', value: 5 }
 ]
 
-const tasaOptions = [
-  { label: '3.70', value: 3.7 },
-  { label: '3.75', value: 3.75 },
-  { label: '3.80', value: 3.8 },
-  { label: '3.85', value: 3.85 },
-  { label: '3.90', value: 3.9 },
-  { label: '3.95', value: 3.95 },
-  { label: '4.00', value: 4.0 }
-]
+const tasaOptions = ref([])
+const cargandoTasa = ref(false)
+
+const getCodigoMoneda = id => {
+  const m = opcionesMoneda.find(o => o.value === id)
+  return m ? m.label.split(' ')[0] : null
+}
+
+const descripcionTasa = computed(() => {
+  if (!form.value.tasaCambio || !form.value.monedaEntrega || !form.value.monedaRecibe) return ''
+  const de = monedaLabel(form.value.monedaEntrega)
+  const para = monedaLabel(form.value.monedaRecibe)
+  return `1 ${de} ≈ ${Number(form.value.tasaCambio).toFixed(3)} ${para}`
+})
 
 const monedaLabel = id => {
   const m = opcionesMoneda.find(o => o.value === id)
   return m ? m.label.split(' ')[0] : id
 }
 
-const formatNumber = val => {
-  if (val == null) return '0.00'
+const formatNumber = (val, decimals = 2) => {
+  if (val == null) return '0'
   return Number(val).toLocaleString('es-PE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals
   })
+}
+
+const opcionesMonedaEntrega = computed(() =>
+  opcionesMoneda.filter(o => o.value !== form.value.monedaRecibe)
+)
+
+const opcionesMonedaRecibe = computed(() =>
+  opcionesMoneda.filter(o => o.value !== form.value.monedaEntrega)
+)
+
+const limpiarMonedaRecibe = () => {
+  if (form.value.monedaRecibe === form.value.monedaEntrega) {
+    form.value.monedaRecibe = null
+  }
+}
+
+const limpiarMonedaEntrega = () => {
+  if (form.value.monedaEntrega === form.value.monedaRecibe) {
+    form.value.monedaEntrega = null
+  }
 }
 
 const calcularMontoRecibe = (monto, tasa) => {
@@ -273,6 +307,57 @@ const form = ref({
   montoMinimo: null,
   tasaCambio: null
 })
+
+watch(
+  [() => form.value.monedaEntrega, () => form.value.monedaRecibe],
+  async ([monedaEntrega, monedaRecibe]) => {
+    if (!monedaEntrega || !monedaRecibe || monedaEntrega === monedaRecibe) {
+      tasaOptions.value = []
+      form.value.tasaCambio = null
+      return
+    }
+
+    cargandoTasa.value = true
+    form.value.tasaCambio = null
+
+    try {
+      const data = await tipoCambioService.obtener()
+      const rates = data.monedas || []
+
+      const codigoEntrega = getCodigoMoneda(monedaEntrega)
+      const codigoRecibe = getCodigoMoneda(monedaRecibe)
+
+      let mid
+
+      if (codigoRecibe === 'PEN') {
+        const r = rates.find(m => m.codigo === codigoEntrega)
+        mid = r?.mid
+      } else if (codigoEntrega === 'PEN') {
+        const r = rates.find(m => m.codigo === codigoRecibe)
+        if (r?.mid) mid = 1 / r.mid
+      } else {
+        const r1 = rates.find(m => m.codigo === codigoEntrega)
+        const r2 = rates.find(m => m.codigo === codigoRecibe)
+        if (r1?.mid && r2?.mid) mid = r1.mid / r2.mid
+      }
+
+      if (mid && mid > 0) {
+        const step = mid < 1 ? 0.001 : mid < 10 ? 0.02 : 0.5
+        const count = 7
+        const start = mid - step * Math.floor(count / 2)
+        tasaOptions.value = Array.from({ length: count }, (_, i) => {
+          const val = Math.round((start + i * step) * 1000) / 1000
+          return { label: val.toFixed(3), value: val }
+        })
+        form.value.tasaCambio = mid
+      }
+    } catch {
+      tasaOptions.value = []
+    } finally {
+      cargandoTasa.value = false
+    }
+  }
+)
 
 onMounted(async () => {
   try {
@@ -291,6 +376,23 @@ const crearOferta = async () => {
     })
     return
   }
+
+  const esCompra = form.value.tipoOperacion === 'COMPRA'
+  const monedaRevisar = esCompra ? form.value.monedaRecibe : form.value.monedaEntrega
+  const montoRequerido = esCompra
+    ? form.value.montoOfertado * form.value.tasaCambio
+    : form.value.montoOfertado
+  const saldoDisponible = walletStore.saldos.find(s => s.idMoneda === monedaRevisar)?.saldoDisponible ?? 0
+
+  if (saldoDisponible < montoRequerido) {
+    $q.notify({
+      type: 'negative',
+      message: `Saldo insuficiente en ${monedaLabel(monedaRevisar)}. Necesitas ${formatNumber(montoRequerido)} y tienes ${formatNumber(saldoDisponible)}`,
+      position: 'top'
+    })
+    return
+  }
+
   loading.value = true
   try {
     await ofertaStore.crear({ ...form.value })
@@ -446,6 +548,20 @@ const crearOferta = async () => {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 16px;
+}
+
+.tasa-descripcion {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  padding: 4px 0 0 2px;
+}
+
+.field-hint {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  padding: 2px 0 0 2px;
 }
 
 .field-label {

@@ -32,7 +32,7 @@
             <q-icon name="shield" size="16px" />
           </q-avatar>
           <span class="admin-user-name q-ml-sm">{{
-            authStore.user?.correo?.split('@')[0] || 'Admin'
+            authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Admin'
           }}</span>
         </q-btn>
       </q-toolbar>
@@ -87,11 +87,11 @@
             text-color="white"
             class="profile-avatar"
           >
-            {{ authStore.user?.correo?.charAt(0)?.toUpperCase() || 'A' }}
+            {{ authStore.user?.nombres?.charAt(0)?.toUpperCase() || authStore.user?.correo?.charAt(0)?.toUpperCase() || 'A' }}
           </q-avatar>
           <div class="profile-info">
             <div class="profile-name">{{
-              authStore.user?.correo?.split('@')[0] || 'Admin'
+              authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Admin'
             }}</div>
             <div class="profile-role">Administrador</div>
           </div>

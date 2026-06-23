@@ -5,7 +5,7 @@
         <h1 class="dashboard__greeting font-display">
           {{
             authStore.isAuthenticated
-              ? `Hola, ${authStore.user?.correo?.split('@')[0] || 'Usuario'}`
+              ? `Hola, ${authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Usuario'}`
               : 'Bienvenido a ExchangePro'
           }}
         </h1>

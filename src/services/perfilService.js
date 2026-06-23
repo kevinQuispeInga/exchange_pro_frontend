@@ -11,7 +11,7 @@ const perfilService = {
   },
   async subirFoto(file) {
     const form = new FormData()
-    form.append('file', file)
+    form.append('foto', file)
     const { data } = await api.post('/api/Perfil/subir-foto', form)
     return data
   }

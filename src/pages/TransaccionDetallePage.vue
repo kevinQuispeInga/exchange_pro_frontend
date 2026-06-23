@@ -473,8 +473,8 @@
             <div class="instruc-card">
               <span class="instruc-label">Tasa de cambio</span>
               <span class="instruc-value font-mono"
-                >1 {{ instrucciones.monedaEntregaCode }} =
-                {{ formatNumber(instrucciones.tasaCambio) }}
+                >                1 {{ instrucciones.monedaEntregaCode }} =
+                {{ formatNumber(instrucciones.tasaCambio, 3) }}
                 {{ instrucciones.monedaRecibeCode }}</span
               >
             </div>
@@ -829,6 +829,10 @@ const verInstrucciones = async () => {
     instrucciones.value = await transaccionService.getInstruccionesPago(
       transaccion.value.idTransaccion
     )
+    if (instrucciones.value && transaccion.value?.tasaCambio) {
+      instrucciones.value.montoRecibe =
+        transaccion.value.montoOperacion * transaccion.value.tasaCambio
+    }
     instruccionesDialog.value = true
   } catch {
     $q.notify({

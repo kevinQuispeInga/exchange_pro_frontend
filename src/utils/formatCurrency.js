@@ -21,11 +21,11 @@ export function currencySymbol(monedaId, monedaCode) {
   return 'S/'
 }
 
-export function formatNumber(val) {
+export function formatNumber(val, decimals = 2) {
   if (val == null) return '0.00'
   return Number(val).toLocaleString('es-PE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: decimals
   })
 }
 
