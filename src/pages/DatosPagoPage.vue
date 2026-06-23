@@ -13,7 +13,7 @@
       <div class="method-card">
         <div class="method-card__header">
           <div class="method-card__icon method-card__icon--yape">
-            <q-icon name="qr_code" size="22px" />
+            <q-icon name="img:/yape.png" size="34px" />
           </div>
           <div>
             <h3 class="method-card__title">Yape</h3>
@@ -25,12 +25,15 @@
             v-model="yape"
             label="Número de Yape"
             type="tel"
-            mask="999999999"
-            fill-mask
             outlined
             dense
+            dark
             placeholder="987654321"
             class="method-input"
+            maxlength="9"
+            :rules="[
+              val => !val || /^\d{9}$/.test(val) || 'Debe tener 9 dígitos'
+            ]"
             hide-bottom-space
           />
         </div>
@@ -39,7 +42,7 @@
       <div class="method-card">
         <div class="method-card__header">
           <div class="method-card__icon method-card__icon--plin">
-            <q-icon name="qr_code_scanner" size="22px" />
+            <q-icon name="img:/plin.png" size="34px" />
           </div>
           <div>
             <h3 class="method-card__title">Plin</h3>
@@ -51,12 +54,15 @@
             v-model="plin"
             label="Número de Plin"
             type="tel"
-            mask="999999999"
-            fill-mask
             outlined
             dense
+            dark
             placeholder="987654321"
             class="method-input"
+            maxlength="9"
+            :rules="[
+              val => !val || /^\d{9}$/.test(val) || 'Debe tener 9 dígitos'
+            ]"
             hide-bottom-space
           />
         </div>
@@ -72,45 +78,49 @@
             <p class="method-card__desc">Depósito en cuenta bancaria</p>
           </div>
         </div>
-        <div class="method-card__body">
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-6">
-              <q-select
-                v-model="bancoId"
-                :options="bancoOptions"
-                label="Banco"
-                outlined
-                dense
-                placeholder="Seleccionar"
-                class="method-input"
-                emit-value
-                map-options
-                hide-bottom-space
-              />
-            </div>
-            <div class="col-12 col-sm-6">
-              <q-input
-                v-model="numeroCuenta"
-                label="Número de Cuenta"
-                outlined
-                dense
-                placeholder="000-0000000-0-00"
-                class="method-input"
-                hide-bottom-space
-              />
-            </div>
-            <div class="col-12">
-              <q-input
-                v-model="cci"
-                label="CCI (Código de Cuenta Interbancario)"
-                outlined
-                dense
-                placeholder="000-000-0000000-00-00"
-                class="method-input"
-                hide-bottom-space
-              />
-            </div>
-          </div>
+        <div class="method-card__body bank-body">
+          <q-select
+            v-model="bancoId"
+            :options="bancoOptions"
+            label="Banco"
+            outlined
+            dense
+            dark
+            placeholder="Seleccionar"
+            class="method-input"
+            emit-value
+            map-options
+            :rules="[val => !!val || 'Selecciona un banco']"
+            hide-bottom-space
+          />
+          <q-input
+            v-model="numeroCuenta"
+            label="Número de Cuenta"
+            outlined
+            dense
+            dark
+            placeholder="000-0000000-0-00"
+            class="method-input"
+            maxlength="14"
+            :rules="[
+              val => !val || /^\d{14}$/.test(val) || 'Debe tener 14 dígitos'
+            ]"
+            hide-bottom-space
+          />
+          <q-input
+            v-model="cci"
+            label="CCI"
+            outlined
+            dense
+            dark
+            placeholder="000-000-0000000-00-00"
+            class="method-input"
+            maxlength="20"
+            :rules="[
+              val => !val || /^\d{20}$/.test(val) || 'Debe tener 20 dígitos'
+            ]"
+            hide-bottom-space
+          />
         </div>
       </div>
 
@@ -138,7 +148,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import datosPagoService from '@/services/datosPagoService'
@@ -159,6 +169,19 @@ const bancoOptions = [
   { label: 'BBVA', value: 3 },
   { label: 'Scotiabank', value: 4 }
 ]
+
+onMounted(async () => {
+  try {
+    const data = await datosPagoService.obtener()
+    if (data.yape) yape.value = data.yape
+    if (data.plin) plin.value = data.plin
+    if (data.idBanco) bancoId.value = data.idBanco
+    if (data.numeroCuenta) numeroCuenta.value = data.numeroCuenta
+    if (data.cci) cci.value = data.cci
+  } catch {
+    // No hay datos guardados aún
+  }
+})
 
 const guardarDatosPago = async () => {
   const tieneYape = !!yape.value
@@ -273,12 +296,12 @@ const guardarDatosPago = async () => {
 }
 
 .method-card__icon--yape {
-  background: rgba(200, 121, 65, 0.1);
+  background: transparent;
   color: var(--color-accent);
 }
 
 .method-card__icon--plin {
-  background: rgba(43, 122, 98, 0.1);
+  background: transparent;
   color: var(--color-positive);
 }
 
@@ -306,14 +329,23 @@ const guardarDatosPago = async () => {
   padding: 16px 20px;
 }
 
+.method-card--wide {
+  grid-column: 1 / -1;
+}
+
+.bank-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .method-input :deep(.q-field__control) {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
   min-height: 42px;
 }
 
 .method-input :deep(.q-field--focused .q-field__control) {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 3px rgba(27, 58, 75, 0.08);
 }
 

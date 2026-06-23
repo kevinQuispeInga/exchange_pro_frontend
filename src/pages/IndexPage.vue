@@ -13,7 +13,7 @@
           {{
             authStore.isAuthenticated
               ? 'Gestiona tus intercambios P2P desde un solo lugar'
-              : 'La plataforma segura de intercambio PEN/USD entre personas'
+              : 'La plataforma segura de intercambio de divisas entre personas'
           }}
         </p>
       </div>
@@ -32,7 +32,6 @@
 
     <MarketRhythm
       :active-offers="ofertaStore.ofertas.length"
-      :volume="transaccionStore.transacciones.length * 250"
       class="q-mb-lg"
     />
 
@@ -88,8 +87,7 @@
               Number(oferta.tasaCambio).toFixed(2)
             }}</div>
             <div class="oferta-row__amount font-mono"
-              >S/
-              {{ Number(oferta.montoOfertado).toLocaleString('es-PE') }}</div
+              >{{ Number(oferta.montoOfertado).toLocaleString('es-PE') }} {{ oferta.monedaEntregaCode || '' }}</div
             >
           </div>
         </div>
@@ -128,7 +126,7 @@
               {{ trx.estado }}
             </q-badge>
             <div class="activity-row__amount font-mono"
-              >S/ {{ Number(trx.montoOperacion).toLocaleString('es-PE') }}</div
+              >{{ Number(trx.montoOperacion).toLocaleString('es-PE') }} {{ trx.monedaEntregaCode || '' }}</div
             >
           </div>
         </div>

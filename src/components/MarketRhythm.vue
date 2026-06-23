@@ -44,26 +44,38 @@
     </div>
     <div class="market-rhythm__content">
       <div class="market-rhythm__rate">
-        <span class="market-rhythm__label">Tasa PEN/USD</span>
-        <span class="market-rhythm__value font-mono" ref="rateRef">
-          {{ currentRate.toFixed(4) }}
-        </span>
-        <span
-          class="market-rhythm__change"
-          :class="rateChange >= 0 ? 'up' : 'down'"
-        >
-          <q-icon
-            :name="rateChange >= 0 ? 'arrow_upward' : 'arrow_downward'"
-            size="14px"
-          />
-          {{ Math.abs(rateChange).toFixed(4) }}
-        </span>
+        <div class="market-rhythm__tabs">
+          <button
+            v-for="m in rates"
+            :key="m.codigo"
+            class="tab-btn"
+            :class="{ active: selected === m.codigo }"
+            @click="selected = m.codigo"
+          >
+            {{ m.codigo }}
+          </button>
+        </div>
+        <div class="market-rhythm__prices">
+          <span class="market-rhythm__value font-mono" ref="rateRef">
+            {{ activeRate.mid.toFixed(4) }}
+          </span>
+          <span
+            class="market-rhythm__direction"
+            :class="activeRate.direccion"
+          >
+            <q-icon
+              :name="activeRate.direccion === 'sube' ? 'arrow_upward' : activeRate.direccion === 'baja' ? 'arrow_downward' : 'remove'"
+              size="16px"
+            />
+          </span>
+        </div>
+        <div class="market-rhythm__spread">
+          <span class="spread-item"><strong>COMPRA</strong> <span class="font-mono">{{ activeRate.compra.toFixed(4) }}</span></span>
+          <span class="spread-sep">|</span>
+          <span class="spread-item"><strong>VENTA</strong> <span class="font-mono">{{ activeRate.venta.toFixed(4) }}</span></span>
+        </div>
       </div>
       <div class="market-rhythm__stats">
-        <div class="market-rhythm__stat">
-          <span class="stat-label">Volumen 24h</span>
-          <span class="stat-value font-mono">S/ {{ formatVolume }}</span>
-        </div>
         <div class="market-rhythm__stat">
           <span class="stat-label">Ofertas Activas</span>
           <span class="stat-value font-mono">{{ activeOffers }}</span>
@@ -75,20 +87,32 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import tipoCambioService from '@/services/tipoCambioService'
 
 const props = defineProps({
-  activeOffers: { type: Number, default: 0 },
-  volume: { type: Number, default: 0 }
+  activeOffers: { type: Number, default: 0 }
 })
 
 const containerRef = ref(null)
 const rateRef = ref(null)
 const width = ref(800)
 const height = ref(200)
-const currentRate = ref(3.742)
-const rateChange = ref(0.0052)
-let rateInterval = null
+const rates = ref([])
+const selected = ref('USD')
 let resizeObserver = null
+
+const activeRate = computed(() => {
+  return rates.value.find(m => m.codigo === selected.value) || { codigo: 'USD', mid: 0, compra: 0, venta: 0, direccion: 'estable' }
+})
+
+const fetchRate = async () => {
+  try {
+    const data = await tipoCambioService.obtener()
+    rates.value = data.monedas || []
+  } catch {
+    // silent
+  }
+}
 
 const particles = computed(() => {
   const symbols = ['S/', '$', 'S/', '$', 'S/', '$']
@@ -143,24 +167,11 @@ const wavePath2 = computed(() => {
   return segments.join(' ') + ` L${w},${h} L0,${h} Z`
 })
 
-const formatVolume = computed(() => {
-  if (props.volume >= 1000) {
-    return (props.volume / 1000).toFixed(1) + 'K'
-  }
-  return props.volume.toLocaleString('es-PE')
-})
-
 function updateDimensions() {
   if (containerRef.value) {
     width.value = containerRef.value.offsetWidth
     height.value = containerRef.value.offsetHeight
   }
-}
-
-function simulateRateTick() {
-  const change = (Math.random() - 0.5) * 0.002
-  currentRate.value = currentRate.value + change
-  rateChange.value = rateChange.value + (Math.random() - 0.5) * 0.0004
 }
 
 onMounted(() => {
@@ -169,11 +180,10 @@ onMounted(() => {
   if (containerRef.value) {
     resizeObserver.observe(containerRef.value)
   }
-  rateInterval = setInterval(simulateRateTick, 2000)
+  fetchRate()
 })
 
 onBeforeUnmount(() => {
-  if (rateInterval) clearInterval(rateInterval)
   if (resizeObserver) resizeObserver.disconnect()
 })
 </script>
@@ -265,6 +275,36 @@ onBeforeUnmount(() => {
   gap: 4px;
 }
 
+.market-rhythm__tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.tab-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
 .market-rhythm__label {
   font-family: var(--font-body);
   font-size: 0.8rem;
@@ -282,22 +322,43 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.market-rhythm__change {
-  display: inline-flex;
+.market-rhythm__prices {
+  display: flex;
   align-items: center;
-  gap: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-top: 2px;
+  gap: 8px;
 }
 
-.market-rhythm__change.up {
+.market-rhythm__direction {
+  display: inline-flex;
+  align-items: center;
+}
+
+.market-rhythm__direction.sube {
   color: var(--color-positive);
 }
 
-.market-rhythm__change.down {
-  color: var(--color-danger);
+.market-rhythm__direction.baja {
+  color: var(--color-negative);
+}
+
+.market-rhythm__direction.estable {
+  color: var(--color-text-muted);
+}
+
+.market-rhythm__spread {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.spread-item {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.spread-sep {
+  color: var(--color-border);
 }
 
 .market-rhythm__stats {

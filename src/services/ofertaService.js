@@ -16,6 +16,10 @@ const ofertaService = {
   async cancelar(id) {
     const { data } = await api.put(`/api/Oferta/${id}/cancelar`)
     return data
+  },
+  async matches(id) {
+    const { data } = await api.get(`/api/Oferta/${id}/matches`)
+    return data
   }
 }
 

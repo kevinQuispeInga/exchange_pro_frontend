@@ -11,42 +11,27 @@
       <div class="auth-card-wrapper animate-scale-in">
         <div class="auth-brand">
           <div class="auth-brand__icon">
-            <q-icon name="currency_exchange" size="32px" color="white" />
+            <q-icon name="lock_reset" size="32px" color="white" />
           </div>
           <span class="auth-brand__name font-display">ExchangePro</span>
         </div>
-        <h1 class="auth-title font-display">Bienvenido de vuelta</h1>
-        <p class="auth-subtitle">Ingresa a tu cuenta para continuar</p>
+        <h1 class="auth-title font-display">Restablecer contraseña</h1>
+        <p class="auth-subtitle">Ingresa tu nueva contraseña</p>
         <q-form @submit="onSubmit" class="auth-form">
           <div class="field-group">
-            <label class="field-label">Correo electrónico</label>
+            <label class="field-label">Nueva contraseña</label>
             <q-input
-              v-model="correo"
-              type="email"
-              outlined
-              dense
-              dark
-              placeholder="tu@correo.com"
-              class="auth-input"
-              :rules="[val => !!val || 'Ingresa tu correo']"
-              hide-bottom-space
-            >
-              <template v-slot:prepend>
-                <q-icon name="email" size="18px" class="input-icon" />
-              </template>
-            </q-input>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Contraseña</label>
-            <q-input
-              v-model="password"
+              v-model="nuevaPassword"
               :type="showPassword ? 'text' : 'password'"
               outlined
               dense
               dark
               placeholder="••••••••"
               class="auth-input"
-              :rules="[val => !!val || 'Ingresa tu contraseña']"
+              :rules="[
+                val => !!val || 'Ingresa la nueva contraseña',
+                val => val.length >= 6 || 'Mínimo 6 caracteres'
+              ]"
               hide-bottom-space
             >
               <template v-slot:prepend>
@@ -62,8 +47,29 @@
               </template>
             </q-input>
           </div>
+          <div class="field-group">
+            <label class="field-label">Confirmar contraseña</label>
+            <q-input
+              v-model="confirmarPassword"
+              :type="'password'"
+              outlined
+              dense
+              dark
+              placeholder="••••••••"
+              class="auth-input"
+              :rules="[
+                val => !!val || 'Confirma la contraseña',
+                val => val === nuevaPassword || 'Las contraseñas no coinciden'
+              ]"
+              hide-bottom-space
+            >
+              <template v-slot:prepend>
+                <q-icon name="lock" size="18px" class="input-icon" />
+              </template>
+            </q-input>
+          </div>
           <q-btn
-            label="Iniciar Sesión"
+            label="Restablecer contraseña"
             type="submit"
             color="primary"
             unelevated
@@ -72,17 +78,6 @@
             :loading="loading"
             :disable="loading"
           />
-          <div class="auth-footer-text">
-            <router-link to="/forgot-password" class="auth-link"
-              >¿Olvidaste tu contraseña?</router-link
-            >
-          </div>
-          <div class="auth-footer-text">
-            ¿No tienes cuenta?
-            <router-link to="/register" class="auth-link"
-              >Regístrate</router-link
-            >
-          </div>
         </q-form>
       </div>
     </div>
@@ -90,34 +85,49 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { useAuthStore } from '@/stores/authStore'
+import authService from '@/services/authService'
 
 const $router = useRouter()
+const $route = useRoute()
 const $q = useQuasar()
-const authStore = useAuthStore()
 
-const correo = ref('')
-const password = ref('')
+const nuevaPassword = ref('')
+const confirmarPassword = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
+
+onMounted(() => {
+  if (!$route.query.token) {
+    $q.notify({
+      type: 'negative',
+      message: 'Token de recuperación inválido',
+      position: 'top'
+    })
+    $router.push('/login')
+  }
+})
 
 async function onSubmit() {
   loading.value = true
   try {
-    await authStore.login(correo.value, password.value)
-    $q.notify({ type: 'positive', message: 'Sesión iniciada', position: 'top' })
-    if (authStore.isAdmin) {
-      $router.push('/admin/dashboard')
-    } else {
-      $router.push('/')
-    }
+    await authService.restablecerPassword(
+      $route.query.token,
+      nuevaPassword.value,
+      confirmarPassword.value
+    )
+    $q.notify({
+      type: 'positive',
+      message: 'Contraseña restablecida con éxito',
+      position: 'top'
+    })
+    $router.push('/login')
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: error.response?.data?.error || 'Credenciales inválidas',
+      message: error.response?.data?.error || 'Error al restablecer la contraseña',
       position: 'top'
     })
   } finally {
@@ -286,22 +296,5 @@ async function onSubmit() {
   font-size: 0.95rem;
   padding: 12px;
   min-height: 44px;
-}
-
-.auth-footer-text {
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  text-align: center;
-  color: var(--color-text-secondary);
-}
-
-.auth-link {
-  color: var(--color-primary);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.auth-link:hover {
-  text-decoration: underline;
 }
 </style>

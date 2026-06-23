@@ -1,155 +1,289 @@
 <template>
   <q-page class="admin-feedback">
+    <!-- Header -->
     <div class="page-header">
       <div>
-        <h1 class="page-title font-display">Feedback</h1>
-        <p class="page-subtitle">Opiniones y reportes de usuarios</p>
+        <h1 class="page-title font-display text-gradient">Buzón de Feedback</h1>
+        <p class="page-subtitle"
+          >Revisa y responde las sugerencias y reportes de error de los
+          usuarios</p
+        >
       </div>
+      <q-btn
+        flat
+        dense
+        icon="refresh"
+        class="refresh-btn"
+        @click="cargarFeedback"
+        :loading="loading"
+      >
+        <q-tooltip>Actualizar buzón</q-tooltip>
+      </q-btn>
     </div>
 
-    <div class="stats-row row q-col-gutter-sm q-mb-lg">
-      <div class="col-6 col-sm-3" v-for="s in feedbackStats" :key="s.label">
-        <div class="mini-stat glass-card">
-          <div class="mini-stat-value mono" :style="{ color: s.color }">{{ s.value }}</div>
-          <div class="mini-stat-label">{{ s.label }}</div>
+    <!-- Stats Grid -->
+    <div class="stats-row row q-col-gutter-md q-mb-xl">
+      <div
+        class="col-12 col-sm-6 col-md-3"
+        v-for="s in feedbackStats"
+        :key="s.label"
+      >
+        <div
+          class="stat-card glass-card relative-position overflow-hidden"
+          :style="{ '--glow-color': s.glow }"
+        >
+          <div class="stat-card-glow"></div>
+          <div class="row items-center justify-between no-wrap">
+            <div>
+              <div class="stat-value mono">{{ s.value }}</div>
+              <div class="stat-label">{{ s.label }}</div>
+            </div>
+            <div
+              class="stat-icon-wrapper"
+              :style="{ background: s.bg, color: s.color }"
+            >
+              <q-icon :name="s.icon" size="24px" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="filter-tabs q-mb-md">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="filter-pill"
-        :class="{ active: filter === tab.key }"
-        @click="filter = tab.key"
-      >
-        {{ tab.label }}
-      </button>
+    <!-- Controls Bar -->
+    <div
+      class="controls-bar row items-center justify-between q-col-gutter-sm q-mb-lg"
+    >
+      <!-- Search & Filters Left -->
+      <div class="col-12 col-md-6 row items-center q-col-gutter-sm">
+        <div class="col">
+          <q-input
+            v-model="searchQuery"
+            placeholder="Buscar por título, contenido o usuario..."
+            dense
+            outlined
+            dark
+            clearable
+            class="search-input"
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" color="grey-5" />
+            </template>
+          </q-input>
+        </div>
+      </div>
+
+      <!-- Filters Right -->
+      <div class="col-12 col-md-6 flex justify-end gap-sm items-center">
+        <!-- Quick State Filter -->
+        <q-btn-toggle
+          v-model="statusFilter"
+          toggle-color="primary"
+          flat
+          dark
+          dense
+          no-caps
+          class="custom-toggle"
+          :options="[
+            { label: 'Todos', value: 'todos' },
+            { label: 'Pendientes', value: 'PENDIENTE' },
+            { label: 'Revisados', value: 'REVISADO' }
+          ]"
+        />
+
+        <!-- Type Pills -->
+        <div class="filter-tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.key"
+            class="filter-pill"
+            :class="{ active: filter === tab.key }"
+            @click="filter = tab.key"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="table-wrapper glass-card">
-      <q-table
-        :rows="filteredFeedback"
-        :columns="columns"
-        row-key="id"
-        flat
-        :loading="loading"
-        :bordered="false"
-        hide-pagination
-        class="custom-table"
+    <div
+      v-if="feedbackError"
+      class="feedback-error glass-card q-pa-md q-mb-lg row items-center gap-sm"
+    >
+      <q-icon name="error" color="negative" />
+      <div>
+        <div class="text-white font-weight-bold">Error cargando feedback</div>
+        <div class="text-muted">{{ feedbackError }}</div>
+      </div>
+    </div>
+
+    <!-- Feedback Feed (Stunning alternative to standard table) -->
+    <div v-if="loading" class="flex flex-center q-py-xl">
+      <q-spinner-grid color="primary" size="48px" />
+    </div>
+
+    <div
+      v-else-if="filteredFeedback.length === 0"
+      class="empty-state glass-card q-py-xl text-center"
+    >
+      <q-icon name="inbox" size="64px" color="grey-6" class="q-mb-md" />
+      <h3 class="empty-title font-display">Bandeja de entrada vacía</h3>
+      <p class="empty-desc"
+        >No se encontraron comentarios que coincidan con los filtros
+        seleccionados.</p
       >
-        <template v-slot:body-cell-tipo="props">
-          <q-td :props="props">
-            <q-badge
-              :color="props.row.tipo === 'BUG_REPORT' ? 'negative' : 'primary'"
-              rounded
-              class="tipo-badge"
-            >
-              {{ props.row.tipo === 'BUG_REPORT' ? 'BUG REPORT' : 'RECOMENDACION' }}
-            </q-badge>
-          </q-td>
-        </template>
+    </div>
 
-        <template v-slot:body-cell-fecha="props">
-          <q-td :props="props">
-            <span class="fecha-cell">{{ formatDate(props.row.fechaCreacion) }}</span>
-          </q-td>
-        </template>
-
-        <template v-slot:body-cell-estado="props">
-          <q-td :props="props">
-            <q-badge
-              :color="props.row.estado === 'REVISADO' ? 'positive' : 'warning'"
-              rounded
-              class="estado-badge"
-            >
-              {{ props.row.estado === 'REVISADO' ? 'REVISADO' : 'PENDIENTE' }}
-            </q-badge>
-          </q-td>
-        </template>
-
-        <template v-slot:body-cell-acciones="props">
-          <q-td :props="props">
-            <q-btn
-              flat
-              dense
-              icon="reply"
-              size="sm"
-              color="primary"
-              class="action-btn"
-              @click="abrirResponder(props.row)"
-            >
-              <q-tooltip>Responder</q-tooltip>
-            </q-btn>
-          </q-td>
-        </template>
-
-        <template v-slot:no-data>
-          <div class="empty-state">
-            <q-icon name="feedback" size="48px" color="text-muted" />
-            <h3 class="empty-title">Sin feedback por revisar</h3>
-            <p class="empty-desc">No hay elementos que coincidan con este filtro.</p>
+    <div v-else class="feedback-feed">
+      <div
+        v-for="item in filteredFeedback"
+        :key="item.idFeedback"
+        class="feedback-card glass-card"
+        :class="{
+          'card-revisado': item.estado === 'REVISADO',
+          expanded: expandedCard === item.idFeedback
+        }"
+      >
+        <div
+          class="card-header row items-start no-wrap justify-between"
+          @click="toggleExpand(item.idFeedback)"
+        >
+          <div class="row items-center no-wrap gap-md">
+            <!-- User Avatar / Initials with gradient -->
+            <div class="avatar-gradient">
+              {{ getInitials(item.usuarioNombre) }}
+            </div>
+            <div>
+              <div class="row items-center gap-sm q-mb-xs">
+                <q-badge
+                  :color="item.tipo === 'BUG_REPORT' ? 'negative' : 'primary'"
+                  class="type-badge text-uppercase"
+                  rounded
+                >
+                  {{ item.tipo === 'BUG_REPORT' ? 'Bug' : 'Sugerencia' }}
+                </q-badge>
+                <q-badge
+                  :color="item.estado === 'REVISADO' ? 'positive' : 'warning'"
+                  class="status-badge"
+                  rounded
+                >
+                  {{ item.estado === 'REVISADO' ? 'Revisado' : 'Pendiente' }}
+                </q-badge>
+                <span class="card-date">{{
+                  formatDate(item.fechaCreacion)
+                }}</span>
+              </div>
+              <h4 class="card-subject font-display">{{ item.titulo }}</h4>
+              <div class="card-author">
+                Por:
+                <span class="text-white font-weight-bold">{{
+                  item.usuarioNombre
+                }}</span>
+                <span class="text-muted q-ml-sm"
+                  >({{ item.usuarioEmail }})</span
+                >
+              </div>
+            </div>
           </div>
-        </template>
-      </q-table>
+
+          <div class="row items-center gap-sm">
+            <q-btn
+              v-if="item.estado === 'PENDIENTE'"
+              color="primary"
+              unelevated
+              no-caps
+              label="Responder"
+              size="sm"
+              class="respond-btn"
+              @click.stop="abrirResponder(item)"
+            />
+            <q-icon
+              :name="
+                expandedCard === item.idFeedback ? 'expand_less' : 'expand_more'
+              "
+              size="24px"
+              color="grey-4"
+              class="cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <!-- Collapsible Content -->
+        <q-slide-transition>
+          <div
+            v-show="expandedCard === item.idFeedback"
+            class="card-expanded-content"
+          >
+            <div class="feedback-desc-section">
+              <div class="content-label">Comentario del Usuario:</div>
+              <p class="feedback-desc-text">{{ item.descripcion }}</p>
+            </div>
+
+            <!-- Admin Response Section (if exists) -->
+            <div v-if="item.estado === 'REVISADO'" class="admin-response-box">
+              <div class="row items-center gap-xs q-mb-sm text-positive">
+                <q-icon name="check_circle" size="18px" />
+                <span class="response-title">Respuesta del Administrador:</span>
+              </div>
+              <p class="response-text">{{
+                item.respuestaAdmin || 'Revisado sin comentarios.'
+              }}</p>
+            </div>
+          </div>
+        </q-slide-transition>
+      </div>
     </div>
 
-    <q-dialog v-model="responderDialog" persistent>
-      <q-card class="dialog-card">
+    <!-- Responder Dialog -->
+    <q-dialog v-model="responderDialog" persistent backdrop-filter="blur(8px)">
+      <q-card class="dialog-card glass-card">
         <div class="dialog-card__header">
           <div class="dialog-card__brand">
             <q-icon name="feedback" size="24px" color="white" />
           </div>
-          <h2 class="dialog-card__title font-display">Responder Feedback</h2>
+          <h2 class="dialog-card__title font-display">Responder Comentario</h2>
         </div>
 
         <q-card-section class="q-px-lg q-pt-lg">
-          <div class="field-group">
-            <label class="field-label">Título</label>
-            <div class="readonly-field">{{ feedbackActual?.titulo }}</div>
+          <div class="info-bubble q-mb-lg">
+            <div class="row items-center gap-xs q-mb-xs">
+              <q-badge
+                :color="
+                  feedbackActual?.tipo === 'BUG_REPORT' ? 'negative' : 'primary'
+                "
+              >
+                {{
+                  feedbackActual?.tipo === 'BUG_REPORT' ? 'BUG' : 'SUGERENCIA'
+                }}
+              </q-badge>
+              <span class="info-author text-muted"
+                >de {{ feedbackActual?.usuarioNombre }}</span
+              >
+            </div>
+            <div class="info-title text-white font-weight-bold">{{
+              feedbackActual?.titulo
+            }}</div>
+            <p class="info-desc text-muted q-mt-sm">{{
+              feedbackActual?.descripcion
+            }}</p>
           </div>
 
-          <div class="field-group">
-            <label class="field-label">Descripción</label>
-            <div class="readonly-field readonly-area">{{ feedbackActual?.descripcion }}</div>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label">Estado actual</label>
-            <q-badge
-              :color="feedbackActual?.estado === 'REVISADO' ? 'positive' : 'warning'"
-              rounded
-            >
-              {{ feedbackActual?.estado === 'REVISADO' ? 'REVISADO' : 'PENDIENTE' }}
-            </q-badge>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label">Respuesta del administrador</label>
+          <div class="field-group q-mb-md">
+            <label class="field-label">Tu Respuesta</label>
             <q-input
               v-model="respuesta"
               type="textarea"
               outlined
               dense
-              placeholder="Escribe tu respuesta..."
+              dark
+              placeholder="Escribe un mensaje de agradecimiento o resolución..."
               class="dialog-input dialog-textarea"
+              maxlength="500"
               :rules="[val => !!val || 'La respuesta es requerida']"
               hide-bottom-space
             />
           </div>
 
-          <div class="field-group">
-            <q-checkbox
-              v-model="marcarRevisado"
-              label="Marcar como Revisado"
-              color="positive"
-              dense
-              class="review-checkbox"
-            />
-          </div>
-
-          <div class="dialog-actions">
+          <div class="dialog-actions q-mt-lg">
             <q-btn
               label="Cancelar"
               flat
@@ -158,7 +292,7 @@
               v-close-popup
             />
             <q-btn
-              label="Enviar"
+              label="Enviar Respuesta"
               color="primary"
               unelevated
               no-caps
@@ -176,48 +310,109 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
-import api from '@/services/api'
+import feedbackService from '@/services/feedbackService'
 
 const $q = useQuasar()
 const loading = ref(false)
 const allFeedback = ref([])
 const filter = ref('todos')
+const statusFilter = ref('todos')
+const searchQuery = ref('')
 const responderDialog = ref(false)
 const feedbackActual = ref(null)
 const respuesta = ref('')
-const marcarRevisado = ref(true)
 const enviando = ref(false)
+const expandedCard = ref(null)
+const feedbackError = ref('')
 
 const tabs = [
   { key: 'todos', label: 'Todos' },
-  { key: 'RECOMENDACION', label: 'Recomendaciones' },
-  { key: 'BUG_REPORT', label: 'Bug Reports' }
+  { key: 'RECOMENDACION', label: 'Sugerencias' },
+  { key: 'BUG_REPORT', label: 'Bugs' }
 ]
 
-const columns = [
-  { name: 'tipo', label: 'Tipo', field: 'tipo', align: 'left' },
-  { name: 'titulo', label: 'Título', field: 'titulo', align: 'left' },
-  { name: 'usuario', label: 'Usuario', field: row => row.usuario?.nombreUsuario || row.usuario?.email || row.usuario || '-', align: 'left' },
-  { name: 'fecha', label: 'Fecha', field: 'fechaCreacion', align: 'left', sortable: true },
-  { name: 'estado', label: 'Estado', field: 'estado', align: 'left' },
-  { name: 'acciones', label: '', field: 'acciones', align: 'center' }
-]
+const toggleExpand = id => {
+  if (expandedCard.value === id) {
+    expandedCard.value = null
+  } else {
+    expandedCard.value = id
+  }
+}
+
+const getInitials = name => {
+  if (!name) return 'U'
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
 
 const filteredFeedback = computed(() => {
-  if (filter.value === 'todos') return allFeedback.value
-  return allFeedback.value.filter(f => f.tipo === filter.value)
+  return allFeedback.value.filter(f => {
+    // 1. Tipo Filter
+    const matchesType = filter.value === 'todos' || f.tipo === filter.value
+
+    // 2. Estado Filter
+    const matchesStatus =
+      statusFilter.value === 'todos' || f.estado === statusFilter.value
+
+    // 3. Search Query Filter
+    const query = searchQuery.value?.toLowerCase() || ''
+    const matchesSearch =
+      !query ||
+      f.titulo?.toLowerCase().includes(query) ||
+      f.descripcion?.toLowerCase().includes(query) ||
+      f.usuarioNombre?.toLowerCase().includes(query) ||
+      f.usuarioEmail?.toLowerCase().includes(query)
+
+    return matchesType && matchesStatus && matchesSearch
+  })
 })
 
 const feedbackStats = computed(() => {
   const total = allFeedback.value.length
-  const pendientes = allFeedback.value.filter(f => f.estado !== 'REVISADO').length
-  const recomendaciones = allFeedback.value.filter(f => f.tipo === 'RECOMENDACION').length
+  const pendientes = allFeedback.value.filter(
+    f => f.estado !== 'REVISADO'
+  ).length
+  const recomendaciones = allFeedback.value.filter(
+    f => f.tipo === 'RECOMENDACION'
+  ).length
   const bugs = allFeedback.value.filter(f => f.tipo === 'BUG_REPORT').length
   return [
-    { label: 'Total', value: total, color: 'var(--color-text)' },
-    { label: 'Pendientes', value: pendientes, color: 'var(--color-warning)' },
-    { label: 'Recomendaciones', value: recomendaciones, color: 'var(--color-primary)' },
-    { label: 'Bug Reports', value: bugs, color: 'var(--color-negative)' }
+    {
+      label: 'Total Recibido',
+      value: total,
+      icon: 'mark_email_unread',
+      bg: 'rgba(124, 58, 237, 0.15)',
+      color: '#7c3aed',
+      glow: 'rgba(124, 58, 237, 0.3)'
+    },
+    {
+      label: 'Por Revisar',
+      value: pendientes,
+      icon: 'pending_actions',
+      bg: 'rgba(245, 158, 11, 0.15)',
+      color: '#f59e0b',
+      glow: 'rgba(245, 158, 11, 0.3)'
+    },
+    {
+      label: 'Sugerencias',
+      value: recomendaciones,
+      icon: 'lightbulb',
+      bg: 'rgba(59, 130, 246, 0.15)',
+      color: '#3b82f6',
+      glow: 'rgba(59, 130, 246, 0.3)'
+    },
+    {
+      label: 'Bugs Reportados',
+      value: bugs,
+      icon: 'bug_report',
+      bg: 'rgba(239, 68, 68, 0.15)',
+      color: '#ef4848',
+      glow: 'rgba(239, 68, 68, 0.3)'
+    }
   ]
 })
 
@@ -235,7 +430,6 @@ const formatDate = dateStr => {
 const abrirResponder = feedback => {
   feedbackActual.value = feedback
   respuesta.value = ''
-  marcarRevisado.value = feedback.estado !== 'REVISADO'
   responderDialog.value = true
 }
 
@@ -251,10 +445,10 @@ const enviarRespuesta = async () => {
 
   enviando.value = true
   try {
-    await api.put(`/api/Feedback/${feedbackActual.value.id}/responder`, {
-      respuesta: respuesta.value,
-      marcarRevisado: marcarRevisado.value
-    })
+    await feedbackService.respond(
+      feedbackActual.value.idFeedback,
+      respuesta.value
+    )
     $q.notify({
       type: 'positive',
       message: 'Respuesta enviada correctamente',
@@ -262,10 +456,16 @@ const enviarRespuesta = async () => {
     })
     responderDialog.value = false
     await cargarFeedback()
-  } catch {
+  } catch (err) {
+    console.error('Error sending feedback response:', err.response?.data ?? err)
+    const errorMessage =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      err.response?.statusText ||
+      'Error al enviar la respuesta'
     $q.notify({
       type: 'negative',
-      message: 'Error al enviar la respuesta',
+      message: errorMessage,
       position: 'top'
     })
   } finally {
@@ -276,12 +476,28 @@ const enviarRespuesta = async () => {
 const cargarFeedback = async () => {
   loading.value = true
   try {
-    const res = await api.get('/api/Feedback')
-    allFeedback.value = Array.isArray(res.data) ? res.data : []
-  } catch {
+    const data = await feedbackService.getAll()
+    allFeedback.value = Array.isArray(data) ? data : []
+  } catch (err) {
+    console.error('Error loading feedback:', err.response?.data ?? err)
+    const responseData = err.response?.data
+    const responseInfo = responseData
+      ? typeof responseData === 'string'
+        ? responseData
+        : JSON.stringify(responseData)
+      : ''
+    const errorMessage =
+      [
+        `HTTP ${err.response?.status ?? ''}`,
+        err.response?.statusText,
+        responseInfo
+      ]
+        .filter(Boolean)
+        .join(' - ') || 'Error al cargar feedback'
+    feedbackError.value = errorMessage
     $q.notify({
       type: 'negative',
-      message: 'Error al cargar feedback',
+      message: errorMessage,
       position: 'top'
     })
   } finally {
@@ -294,70 +510,145 @@ onMounted(cargarFeedback)
 
 <style scoped>
 .admin-feedback {
-  padding: 28px 32px;
-  max-width: 1200px;
+  padding: 32px 40px;
+  max-width: 1300px;
   margin: 0 auto;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
 }
 
 .page-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 4px;
-  color: var(--color-text);
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 6px;
 }
 
 .page-subtitle {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--color-text-secondary);
   margin: 0;
 }
 
-/* Mini stats */
-.mini-stat {
-  padding: 16px;
-  text-align: center;
+.refresh-btn {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  color: var(--color-text);
+  transition: all 0.25s ease;
 }
 
-.mini-stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
+.refresh-btn:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
 }
 
-.mini-stat-label {
-  font-family: var(--font-body);
-  font-size: 0.75rem;
+/* Stat Cards */
+.stat-card {
+  padding: 24px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-radius: 16px;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px var(--glow-color, rgba(124, 58, 237, 0.15));
+  border-color: var(--color-primary);
+}
+
+.stat-card-glow {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    var(--glow-color, rgba(124, 58, 237, 0.05)) 0%,
+    transparent 70%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.stat-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.stat-label {
+  font-size: 0.82rem;
   color: var(--color-text-muted);
-  margin-top: 4px;
+  font-weight: 500;
+  margin-top: 6px;
+  letter-spacing: 0.02em;
 }
 
-.mono {
-  font-family: var(--font-mono);
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Filter tabs */
+/* Controls Bar */
+.controls-bar {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+}
+
+.search-input :deep(.q-field__control) {
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.search-input :deep(.q-field--focused .q-field__control) {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.15);
+}
+
+.custom-toggle {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  padding: 2px;
+}
+
+.custom-toggle :deep(.q-btn) {
+  border-radius: 100px;
+  padding: 4px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 .filter-tabs {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .filter-pill {
-  font-family: var(--font-body);
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--color-text-secondary);
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--glass-border);
   border-radius: 100px;
-  padding: 6px 18px;
+  padding: 6px 16px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .filter-pill:hover {
@@ -369,192 +660,274 @@ onMounted(cargarFeedback)
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
-/* Table wrapper */
-.table-wrapper {
-  overflow: hidden;
-  border-radius: var(--radius-lg);
+/* Feedback Feed */
+.feedback-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.custom-table :deep(.q-table) {
-  font-family: var(--font-body);
+.feedback-card {
+  border-radius: 16px;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.custom-table :deep(th) {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
+.feedback-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  transform: scale(1.005);
+}
+
+.feedback-card.expanded {
+  border-color: rgba(124, 58, 237, 0.3);
+  background: rgba(124, 58, 237, 0.02);
+  box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.1);
+}
+
+.card-header {
+  outline: none;
+}
+
+.avatar-gradient {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: white;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+  flex-shrink: 0;
+}
+
+.type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
   letter-spacing: 0.04em;
-  padding: 14px 16px !important;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
 }
 
-.custom-table :deep(td) {
-  padding: 12px 16px !important;
-  border-bottom: 1px solid var(--color-border);
+.status-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.card-date {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.card-subject {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 4px 0;
+  color: white;
+}
+
+.card-author {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.respond-btn {
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 6px 14px;
+}
+
+/* Expanded Content */
+.card-expanded-content {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.content-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.feedback-desc-text {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.admin-response-box {
+  margin-top: 20px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.response-title {
+  font-weight: 600;
   font-size: 0.88rem;
 }
 
-.custom-table :deep(.q-table tbody tr:hover) {
-  background: rgba(124, 58, 237, 0.04);
-}
-
-.tipo-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  letter-spacing: 0.03em;
-}
-
-.estado-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 4px 10px;
-}
-
-.fecha-cell {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
+.response-text {
+  font-size: 0.92rem;
+  line-height: 1.5;
   color: var(--color-text-secondary);
+  margin: 0;
+  white-space: pre-wrap;
 }
 
-.action-btn {
-  border-radius: var(--radius-sm);
-}
-
-/* Empty state */
+/* Empty State */
 .empty-state {
-  text-align: center;
-  padding: 48px 24px;
+  border-radius: 16px;
 }
 
 .empty-title {
-  font-family: var(--font-body);
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin: 12px 0 6px;
-  color: var(--color-text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
 
 .empty-desc {
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  color: var(--color-text-secondary);
-  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 /* Dialog */
 .dialog-card {
-  min-width: 460px;
-  border-radius: var(--radius-xl);
-  overflow: hidden;
+  min-width: 500px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .dialog-card__header {
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #4f46e5 100%);
   padding: 24px;
   text-align: center;
 }
 
 .dialog-card__brand {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 10px;
+  margin: 0 auto 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .dialog-card__title {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 800;
   color: white;
   margin: 0;
+}
+
+.info-bubble {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.info-title {
+  font-size: 1rem;
+}
+
+.info-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .field-label {
-  font-family: var(--font-body);
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
   text-transform: uppercase;
+  color: var(--color-text-secondary);
   letter-spacing: 0.04em;
 }
 
-.readonly-field {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--color-text);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-}
-
-.readonly-area {
-  min-height: 60px;
-  line-height: 1.5;
-}
-
 .dialog-input :deep(.q-field__control) {
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  min-height: 44px;
-}
-
-.dialog-input :deep(.q-field--focused .q-field__control) {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-radius: 12px;
 }
 
 .dialog-textarea :deep(.q-field__native) {
-  min-height: 100px;
-}
-
-.review-checkbox :deep(.q-checkbox__label) {
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  color: var(--color-text);
+  min-height: 120px;
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding-top: 8px;
+  gap: 12px;
 }
 
 .btn-cancel {
-  color: var(--color-text-secondary);
+  border-radius: 10px;
   font-weight: 500;
-  border-radius: var(--radius-sm);
 }
 
 .btn-submit {
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   font-weight: 600;
-  padding: 8px 24px;
+  padding: 10px 24px;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+.gap-md {
+  gap: 16px;
+}
+.gap-xs {
+  gap: 4px;
 }
 
 @media (max-width: 768px) {
   .admin-feedback {
-    padding: 20px 16px;
+    padding: 24px 16px;
   }
 
   .dialog-card {
     min-width: auto;
+    width: 100%;
+  }
+
+  .controls-bar {
+    padding: 12px;
+  }
+
+  .controls-bar > div {
+    justify-content: flex-start !important;
+  }
+
+  .filter-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    padding-bottom: 4px;
   }
 }
 </style>

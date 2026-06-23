@@ -5,7 +5,14 @@
         <h1 class="page-title font-display">Dashboard</h1>
         <p class="page-subtitle">Panel de control administrativo</p>
       </div>
-      <q-btn flat dense icon="refresh" class="refresh-btn" @click="fetchEstadisticas" :loading="loading" />
+      <q-btn
+        flat
+        dense
+        icon="refresh"
+        class="refresh-btn"
+        @click="fetchEstadisticas"
+        :loading="loading"
+      />
     </div>
 
     <div class="ticker-bar glass-card">
@@ -17,8 +24,8 @@
       </div>
     </div>
 
-    <div class="stats-grid row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-md-6" v-if="loading">
+    <div class="stats-grid q-mb-lg">
+      <div class="stat-card-wrapper" v-if="loading">
         <div class="stat-card stat-hero glass-card shimmer">
           <div class="stat-card-inner">
             <div class="stat-icon-placeholder"></div>
@@ -29,21 +36,30 @@
           </div>
         </div>
       </div>
-      <div class="col-12 col-md-6" v-else>
-        <div class="stat-card stat-hero glass-card glow stat-enter" style="--delay: 0s">
-          <div class="stat-card-inner">
-            <div class="stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.15)">
-              <q-icon name="people" color="primary" size="28px" />
-            </div>
+      <div class="stat-card-wrapper" v-else>
+        <div class="stat-card glass-card glow stat-enter" style="--delay: 0s">
+          <div class="stat-card-inner spaced">
             <div class="stat-body">
-              <div class="stat-value text-gradient">{{ stats.usuarios ?? '—' }}</div>
+              <div class="stat-value text-gradient">{{
+                stats.usuarios ?? '—'
+              }}</div>
               <div class="stat-label">Usuarios Registrados</div>
+            </div>
+            <div
+              class="stat-icon-wrapper"
+              style="background: rgba(124, 58, 237, 0.15)"
+            >
+              <q-icon name="people" color="primary" size="28px" />
             </div>
           </div>
         </div>
       </div>
 
-      <div class="col-12 col-sm-6 col-md-2" v-for="(s, i) in smallStats" :key="s.label">
+      <div
+        class="stat-card-wrapper"
+        v-for="(s, i) in smallStats"
+        :key="s.label"
+      >
         <div v-if="loading" class="stat-card glass-card shimmer">
           <div class="stat-card-inner">
             <div class="stat-icon-placeholder"></div>
@@ -53,13 +69,21 @@
             </div>
           </div>
         </div>
-        <div v-else class="stat-card glass-card stat-enter" :style="{ '--delay': `${(i + 1) * 0.1}s` }">
-          <div class="stat-icon-wrapper" :style="{ background: s.bg }">
-            <q-icon :name="s.icon" :color="s.color" size="22px" />
-          </div>
-          <div class="stat-body">
-            <div class="stat-value mono" :style="{ color: s.valueColor }">{{ s.value }}</div>
-            <div class="stat-label">{{ s.label }}</div>
+        <div
+          v-else
+          class="stat-card glass-card stat-enter"
+          :style="{ '--delay': `${(i + 1) * 0.1}s` }"
+        >
+          <div class="stat-card-inner spaced">
+            <div class="stat-body">
+              <div class="stat-value mono" :style="{ color: s.valueColor }">{{
+                s.value
+              }}</div>
+              <div class="stat-label">{{ s.label }}</div>
+            </div>
+            <div class="stat-icon-wrapper" :style="{ background: s.bg }">
+              <q-icon :name="s.icon" :color="s.color" size="22px" />
+            </div>
           </div>
         </div>
       </div>
@@ -68,7 +92,14 @@
     <div v-if="error" class="error-state glass-card">
       <q-icon name="cloud_off" size="32px" color="negative" />
       <span>No se pudieron cargar las estadísticas</span>
-      <q-btn flat dense label="Reintentar" color="primary" no-caps @click="fetchEstadisticas" />
+      <q-btn
+        flat
+        dense
+        label="Reintentar"
+        color="primary"
+        no-caps
+        @click="fetchEstadisticas"
+      />
     </div>
 
     <div class="activity-section glass-card">
@@ -88,7 +119,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import api from '@/services/api'
+import adminService from '@/services/adminService'
 
 const loading = ref(true)
 const error = ref(false)
@@ -123,37 +154,83 @@ const smallStats = computed(() => [
 
 const tickerText = computed(() => {
   const s = stats.value
-  return [
-    'PLATFORM STATUS: OPERATIONAL',
-    `ACTIVE USERS: ${s.usuarios ?? '...'}`,
-    `OFFERS: ${s.ofertas ?? '...'}`,
-    `COMPLETED TX: ${s.transacciones ?? '...'}`,
-    `PENDING DISPUTES: ${s.disputas ?? '...'}`
-  ].join('  •  ') + '  •  '
+  return (
+    [
+      'ESTADO DE LA PLATAFORMA: OPERATIVO',
+      `USUARIOS ACTIVOS: ${s.usuarios ?? '...'}`,
+      `OFERTAS: ${s.ofertas ?? '...'}`,
+      `TRANSACCIONES COMPLETADAS: ${s.transacciones ?? '...'}`,
+      `DISPUTAS PENDIENTES: ${s.disputas ?? '...'}`
+    ].join('  •  ') + '  •  '
+  )
 })
 
 const activityFeed = [
-  { text: 'Nuevo usuario registrado', time: 'hace 2 min', color: 'var(--color-primary)' },
-  { text: 'Transacción #1284 completada', time: 'hace 8 min', color: 'var(--color-positive)' },
-  { text: 'Disputa #42 resuelta', time: 'hace 15 min', color: 'var(--color-positive)' },
-  { text: 'Nueva oferta creada: USDT/PEN', time: 'hace 22 min', color: 'var(--color-accent)' },
-  { text: 'Feedback recibido de usuario', time: 'hace 35 min', color: 'var(--color-warning)' },
-  { text: 'Retiro procesado: S/ 2,500', time: 'hace 1 h', color: 'var(--color-accent)' }
+  {
+    text: 'Nuevo usuario registrado',
+    time: 'hace 2 min',
+    color: 'var(--color-primary)'
+  },
+  {
+    text: 'Transacción #1284 completada',
+    time: 'hace 8 min',
+    color: 'var(--color-positive)'
+  },
+  {
+    text: 'Disputa #42 resuelta',
+    time: 'hace 15 min',
+    color: 'var(--color-positive)'
+  },
+  {
+    text: 'Nueva oferta creada en el mercado',
+    time: 'hace 22 min',
+    color: 'var(--color-accent)'
+  },
+  {
+    text: 'Feedback recibido de usuario',
+    time: 'hace 35 min',
+    color: 'var(--color-warning)'
+  },
+  {
+    text: 'Retiro procesado: S/ 2,500',
+    time: 'hace 1 h',
+    color: 'var(--color-accent)'
+  }
 ]
 
 const fetchEstadisticas = async () => {
   loading.value = true
   error.value = false
   try {
-    const res = await api.get('/api/Admin/estadisticas')
+    const data = await adminService.getEstadisticas()
     stats.value = {
-      usuarios: res.data.usuarios ?? res.data.totalUsuarios ?? res.data.Usuarios ?? res.data.usuariosRegistrados ?? '—',
-      ofertas: res.data.ofertas ?? res.data.totalOfertas ?? res.data.Ofertas ?? res.data.ofertasActivas ?? '—',
-      transacciones: res.data.transacciones ?? res.data.totalTransacciones ?? res.data.Transacciones ?? res.data.transaccionesCompletadas ?? '—',
-      disputas: res.data.disputas ?? res.data.pendientes ?? res.data.Disputas ?? res.data.disputasPendientes ?? '—'
+      usuarios:
+        data.usuarios ??
+        data.totalUsuarios ??
+        data.Usuarios ??
+        data.usuariosRegistrados ??
+        '—',
+      ofertas:
+        data.ofertas ??
+        data.totalOfertas ??
+        data.Ofertas ??
+        data.ofertasActivas ??
+        '—',
+      transacciones:
+        data.transacciones ??
+        data.totalTransacciones ??
+        data.Transacciones ??
+        data.transaccionesCompletadas ??
+        '—',
+      disputas:
+        data.disputas ??
+        data.pendientes ??
+        data.Disputas ??
+        data.disputasPendientes ??
+        '—'
     }
   } catch (err) {
-    console.error('Error loading stats:', err)
+    console.error('Error loading stats:', err.response?.data ?? err)
     error.value = true
   } finally {
     loading.value = false
@@ -223,20 +300,53 @@ onMounted(fetchEstadisticas)
 }
 
 @keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 /* Stats */
 .stats-grid {
   margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(250px, 1fr));
+  gap: 18px;
+}
+
+@media (max-width: 959px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-card-wrapper {
+  width: 100%;
 }
 
 .stat-card {
-  padding: 20px;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  padding: 24px;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 170px;
+  background: rgba(13, 16, 33, 0.88);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: 24px;
+  backdrop-filter: blur(20px);
 }
 
 .stat-card::before {
@@ -245,8 +355,14 @@ onMounted(fetchEstadisticas)
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, transparent 40%, transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.35),
+    rgba(16, 185, 129, 0.15)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   transition: background 0.4s ease;
@@ -254,17 +370,27 @@ onMounted(fetchEstadisticas)
 }
 
 .stat-card:hover::before {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent), transparent 70%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-accent),
+    transparent 70%
+  );
 }
 
 .stat-card-inner {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 14px;
 }
 
+.stat-card-inner.spaced {
+  gap: 18px;
+}
+
 .stat-hero {
-  min-height: 100px;
+  min-height: 90px;
 }
 
 .stat-hero .stat-card-inner {
@@ -272,13 +398,17 @@ onMounted(fetchEstadisticas)
 }
 
 .stat-icon-wrapper {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: absolute;
+  top: 22px;
+  right: 22px;
   flex-shrink: 0;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
 }
 
 .stat-hero .stat-icon-wrapper {
@@ -290,14 +420,15 @@ onMounted(fetchEstadisticas)
 .stat-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
+  padding-right: 80px;
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.05;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -313,11 +444,13 @@ onMounted(fetchEstadisticas)
 
 .stat-label {
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 /* Entrance animation */

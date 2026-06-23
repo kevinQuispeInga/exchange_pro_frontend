@@ -8,6 +8,18 @@ const authService = {
   async registrar(datos) {
     const { data } = await api.post('/api/Auth/registrar', datos)
     return data
+  },
+  async solicitarReset(correo) {
+    const { data } = await api.post('/api/Auth/solicitar-reset', { correo })
+    return data
+  },
+  async restablecerPassword(resetToken, nuevaPassword, confirmarPassword) {
+    const { data } = await api.post('/api/Auth/restablecer-password', {
+      resetToken,
+      nuevaPassword,
+      confirmarPassword
+    })
+    return data
   }
 }
 

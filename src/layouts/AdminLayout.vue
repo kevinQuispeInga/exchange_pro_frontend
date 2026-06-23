@@ -18,8 +18,9 @@
           icon="notifications"
           size="md"
           class="admin-notif-btn"
+          @click="$router.push('/admin/notificaciones')"
         >
-          <q-badge floating color="negative" rounded>3</q-badge>
+          <q-badge floating color="negative" rounded>{{ unreadCount }}</q-badge>
         </q-btn>
         <q-btn flat class="admin-user-btn" no-caps>
           <q-avatar
@@ -78,6 +79,7 @@
       </q-scroll-area>
 
       <div class="drawer-footer">
+        <TipoCambioBar />
         <div class="admin-profile">
           <q-avatar
             size="36px"
@@ -117,13 +119,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificacionStore } from '@/stores/notificacionStore'
+import TipoCambioBar from '@/components/TipoCambioBar.vue'
 
 const $router = useRouter()
 const $route = useRoute()
 const authStore = useAuthStore()
+const notificacionStore = useNotificacionStore()
+
+const unreadCount = computed(() => notificacionStore.unreadCount)
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    notificacionStore.cargarUnreadCount()
+  }
+})
 
 const drawerOpen = ref(false)
 
@@ -131,7 +144,8 @@ const navItems = computed(() => {
   const items = [
     { label: 'Dashboard', icon: 'dashboard', link: '/admin/dashboard' },
     { label: 'Disputas', icon: 'gavel', link: '/admin/disputas' },
-    { label: 'Feedback', icon: 'feedback', link: '/admin/feedback' }
+    { label: 'Feedback', icon: 'feedback', link: '/admin/feedback' },
+    { label: 'Reportes', icon: 'bar_chart', link: '/admin/reportes' }
   ]
   return items
 })
@@ -262,7 +276,9 @@ function cerrarSesion() {
   border-radius: 8px;
   margin: 2px 8px;
   padding: 8px 12px;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
   position: relative;
 }
 

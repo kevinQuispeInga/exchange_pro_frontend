@@ -22,19 +22,31 @@
           >
           <span class="wallet-hero__label">Saldo total disponible</span>
           <span class="wallet-hero__balance font-display"
-            >S/ {{ formatNumber(totalDisponible) }}</span
+            >{{ formatNumber(totalDisponible) }}</span
           >
         </div>
-        <q-btn
-          color="white"
-          label="Recargar"
-          icon="add"
-          unelevated
-          no-caps
-          class="wallet-hero__btn"
-          text-color="primary"
-          @click="dialogoRecarga = true"
-        />
+        <div class="wallet-hero__btns">
+          <q-btn
+            color="white"
+            label="Recargar"
+            icon="add"
+            unelevated
+            no-caps
+            class="wallet-hero__btn"
+            text-color="primary"
+            @click="dialogoRecarga = true"
+          />
+          <q-btn
+            color="white"
+            label="Retirar"
+            icon="remove"
+            unelevated
+            no-caps
+            class="wallet-hero__btn"
+            text-color="negative"
+            @click="dialogoRetiro = true"
+          />
+        </div>
       </div>
 
       <div
@@ -80,15 +92,67 @@
           <div class="saldo-card__balance">
             <span class="saldo-card__label">Disponible</span>
             <span class="saldo-card__amount font-mono"
-              >S/ {{ formatNumber(saldo.saldoDisponible) }}</span
+              >{{ currencySymbol(saldo.idMoneda) }} {{ formatNumber(saldo.saldoDisponible) }}</span
             >
           </div>
           <div class="saldo-card__footer">
             <div class="saldo-card__retenido">
               <span class="retenido-label">Retenido</span>
               <span class="retenido-amount font-mono"
-                >S/ {{ formatNumber(saldo.saldoRetenido) }}</span
+                >{{ currencySymbol(saldo.idMoneda) }} {{ formatNumber(saldo.saldoRetenido) }}</span
               >
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="movimientos-section">
+        <div class="movimientos-header">
+          <h3 class="movimientos-title font-display">Movimientos</h3>
+          <div class="movimientos-tabs">
+            <q-btn
+              v-for="m in opcionesMoneda"
+              :key="m.value"
+              flat
+              dense
+              no-caps
+              :label="m.label.split(' ')[0]"
+              :class="{ 'mov-tab--active': monedaFiltro === m.value }"
+              class="mov-tab"
+              @click="cambiarFiltroMoneda(m.value)"
+            />
+            <q-btn
+              flat
+              dense
+              no-caps
+              label="Todas"
+              :class="{ 'mov-tab--active': monedaFiltro === null }"
+              class="mov-tab"
+              @click="cambiarFiltroMoneda(null)"
+            />
+          </div>
+        </div>
+        <div v-if="movimientosCargando" class="flex flex-center q-pa-md">
+          <q-spinner color="primary" size="2em" />
+        </div>
+        <div v-else-if="movimientos.length === 0" class="movimientos-empty">
+          <q-icon name="receipt_long" size="36px" color="grey-6" />
+          <span>No hay movimientos registrados</span>
+        </div>
+        <div v-else class="movimientos-list">
+          <div
+            v-for="mov in movimientos"
+            :key="mov.idMovimiento"
+            class="mov-item"
+          >
+            <div class="mov-item__icon" :class="mov.tipoOperacion === 'RECARGA' ? 'mov-icon--in' : 'mov-icon--out'">
+              <q-icon :name="mov.tipoOperacion === 'RECARGA' ? 'arrow_downward' : 'arrow_upward'" size="16px" />
+            </div>
+            <div class="mov-item__info">
+              <span class="mov-item__desc">{{ labelOperacion(mov.tipoOperacion) }}</span>
+              <span class="mov-item__date">{{ formatDate(mov.fechaMovimiento) }}</span>
+            </div>
+            <div class="mov-item__amount" :class="mov.tipoOperacion === 'RECARGA' ? 'amount--positive' : 'amount--negative'">
+              {{ mov.tipoOperacion === 'RECARGA' ? '+' : '-' }}{{ formatNumber(mov.monto) }}
             </div>
           </div>
         </div>
@@ -113,6 +177,7 @@
                 :options="opcionesMoneda"
                 outlined
                 dense
+                dark
                 placeholder="Seleccionar moneda"
                 class="dialog-input"
                 emit-value
@@ -120,25 +185,25 @@
                 :rules="[val => !!val || 'Selecciona una moneda']"
                 hide-bottom-space
               />
+              <div v-if="recarga.idMoneda" class="saldo-info">
+                Saldo disponible: {{ formatCurrency(saldoRecarga?.saldoDisponible ?? 0, recarga.idMoneda) }}
+              </div>
             </div>
             <div class="field-group">
-              <label class="field-label">Monto a recargar (S/)</label>
+              <label class="field-label">Monto a recargar</label>
               <q-input
                 v-model.number="recarga.monto"
                 type="number"
                 outlined
                 dense
+                dark
                 placeholder="0.00"
                 class="dialog-input"
                 :rules="[val => val > 0 || 'Debe ser mayor a 0']"
                 hide-bottom-space
               >
-                <template v-slot:prepend>
-                  <q-icon
-                    name="monetization_on"
-                    size="18px"
-                    class="input-icon"
-                  />
+                <template v-slot:append>
+                  <span class="input-symbol">{{ currencySymbol(recarga.idMoneda) }}</span>
                 </template>
               </q-input>
             </div>
@@ -165,30 +230,129 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="dialogoRetiro" persistent>
+      <q-card class="dialog-card">
+        <div class="dialog-card__header">
+          <div class="dialog-card__brand">
+            <q-icon name="remove_circle" size="24px" color="white" />
+          </div>
+          <h2 class="dialog-card__title font-display">Retirar Saldo</h2>
+          <p class="dialog-card__subtitle">Transfiere fondos a tu cuenta bancaria</p>
+        </div>
+        <q-card-section class="q-px-lg q-pt-lg">
+          <q-form @submit="retirarSaldo" class="q-gutter-md">
+            <div class="field-group">
+              <label class="field-label">Moneda</label>
+              <q-select
+                v-model="retiro.idMoneda"
+                :options="opcionesMoneda"
+                outlined
+                dense
+                dark
+                placeholder="Seleccionar moneda"
+                class="dialog-input"
+                emit-value
+                map-options
+                :rules="[val => !!val || 'Selecciona una moneda']"
+                hide-bottom-space
+              />
+              <div v-if="retiro.idMoneda" class="saldo-info">
+                Saldo disponible: {{ formatCurrency(saldoSeleccionado?.saldoDisponible ?? 0, retiro.idMoneda) }}
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Monto a retirar</label>
+              <q-input
+                v-model.number="retiro.monto"
+                type="number"
+                outlined
+                dense
+                dark
+                placeholder="0.00"
+                class="dialog-input"
+                :rules="[val => val > 0 || 'Debe ser mayor a 0']"
+                hide-bottom-space
+              >
+                <template v-slot:append>
+                  <span class="input-symbol">{{ currencySymbol(retiro.idMoneda) }}</span>
+                </template>
+              </q-input>
+            </div>
+            <div class="dialog-actions">
+              <q-btn
+                label="Cancelar"
+                flat
+                no-caps
+                class="btn-cancel"
+                v-close-popup
+              />
+              <q-btn
+                label="Retirar"
+                type="submit"
+                color="negative"
+                unelevated
+                no-caps
+                :loading="retirando"
+                :disable="retirando"
+                class="btn-submit"
+              />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useWalletStore } from '@/stores/walletStore'
+import walletService from '@/services/walletService'
+import retiroService from '@/services/retiroService'
+import movimientoWalletService from '@/services/movimientoWalletService'
 import EmptyState from '@/components/EmptyState.vue'
+import { formatNumber, formatCurrency, currencySymbol } from '@/utils/formatCurrency'
 
 const $q = useQuasar()
 const walletStore = useWalletStore()
 
 const loading = ref(true)
 const recargando = ref(false)
+const retirando = ref(false)
 const dialogoRecarga = ref(false)
+const dialogoRetiro = ref(false)
 
 const opcionesMoneda = [
   { label: 'PEN (Sol Peruano)', value: 1 },
-  { label: 'USD (Dólar Americano)', value: 2 }
+  { label: 'USD (Dólar Americano)', value: 2 },
+  { label: 'EUR (Euro)', value: 3 },
+  { label: 'JPY (Yen Japonés)', value: 4 },
+  { label: 'GBP (Libra Esterlina)', value: 5 }
 ]
 
 const totalDisponible = computed(() =>
   walletStore.saldos.reduce((sum, s) => sum + (s.saldoDisponible || 0), 0)
 )
+
+const saldoSeleccionado = computed(() =>
+  walletStore.saldos.find(s => s.idMoneda === retiro.value.idMoneda)
+)
+
+const saldoRecarga = computed(() =>
+  walletStore.saldos.find(s => s.idMoneda === recarga.value?.idMoneda)
+)
+
+const labelOperacion = tipo => {
+  const labels = {
+    RECARGA: 'Recarga',
+    RETIRO: 'Retiro',
+    COMPRA_VENTA: 'Compra/Venta',
+    PAGO_WALLET: 'Pago Wallet'
+  }
+  return labels[tipo] || tipo
+}
 
 const monedaLabel = id => {
   const m = opcionesMoneda.find(o => o.value === id)
@@ -197,19 +361,49 @@ const monedaLabel = id => {
 
 const monedaClass = id => (id === 1 ? 'pen' : 'usd')
 
-const formatNumber = val => {
-  if (val == null) return '0.00'
-  return Number(val).toLocaleString('es-PE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+const formatDate = dateStr => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('es-PE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
 const recarga = ref({ monto: null, idMoneda: null })
+const retiro = ref({ monto: null, idMoneda: null })
+
+const movimientos = ref([])
+const movimientosCargando = ref(false)
+const monedaFiltro = ref(null)
+
+const cargarMovimientos = async monedaId => {
+  movimientosCargando.value = true
+  try {
+    const data = await movimientoWalletService.obtener(monedaId)
+    movimientos.value = data || []
+  } catch {
+    movimientos.value = []
+  } finally {
+    movimientosCargando.value = false
+  }
+}
+
+const cambiarFiltroMoneda = monedaId => {
+  monedaFiltro.value = monedaId
+  cargarMovimientos(monedaId)
+}
+
+watch(dialogoRetiro, val => {
+  if (!val) retiro.value = { monto: null, idMoneda: null }
+})
 
 onMounted(async () => {
   try {
     await walletStore.cargarSaldo()
+    await cargarMovimientos()
   } finally {
     loading.value = false
   }
@@ -234,6 +428,28 @@ const recargarSaldo = async () => {
     })
   } finally {
     recargando.value = false
+  }
+}
+
+const retirarSaldo = async () => {
+  retirando.value = true
+  try {
+    await retiroService.solicitar({ ...retiro.value })
+    $q.notify({
+      type: 'positive',
+      message: 'Solicitud de retiro enviada exitosamente',
+      position: 'top'
+    })
+    dialogoRetiro.value = false
+    retiro.value = { monto: null, idMoneda: null }
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.mensaje || 'Error al solicitar retiro',
+      position: 'top'
+    })
+  } finally {
+    retirando.value = false
   }
 }
 </script>
@@ -319,6 +535,11 @@ const recargarSaldo = async () => {
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.wallet-hero__btns {
+  display: flex;
+  gap: 8px;
 }
 
 .wallet-hero__btn {
@@ -434,6 +655,129 @@ const recargarSaldo = async () => {
   color: var(--color-warning);
 }
 
+.movimientos-section {
+  margin-top: 24px;
+}
+
+.movimientos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.movimientos-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.movimientos-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.mov-tab {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+}
+
+.mov-tab--active {
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--color-primary-light);
+}
+
+.movimientos-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.movimientos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.mov-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.mov-item:last-child {
+  border-bottom: none;
+}
+
+.mov-item__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mov-icon--in {
+  background: rgba(43, 122, 98, 0.1);
+  color: var(--color-positive);
+}
+
+.mov-icon--out {
+  background: rgba(244, 63, 94, 0.1);
+  color: var(--color-negative);
+}
+
+.mov-item__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mov-item__desc {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.mov-item__date {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.mov-item__amount {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.amount--positive {
+  color: var(--color-positive);
+}
+
+.amount--negative {
+  color: var(--color-negative);
+}
+
 .dialog-card {
   min-width: 400px;
   border-radius: var(--radius-xl);
@@ -488,17 +832,31 @@ const recargarSaldo = async () => {
 
 .dialog-input :deep(.q-field__control) {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
   min-height: 44px;
 }
 
 .dialog-input :deep(.q-field--focused .q-field__control) {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 3px rgba(27, 58, 75, 0.08);
 }
 
 .input-icon {
   color: var(--color-text-muted);
+}
+
+.input-symbol {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.saldo-info {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  padding-left: 2px;
 }
 
 .dialog-actions {

@@ -15,15 +15,23 @@
               :class="{ active: tipo === 'RECOMENDACION' }"
               @click="tipo = 'RECOMENDACION'"
             >
-              <q-icon name="lightbulb" size="32px" :color="tipo === 'RECOMENDACION' ? 'primary' : 'grey'" />
+              <q-icon
+                name="lightbulb"
+                size="32px"
+                :color="tipo === 'RECOMENDACION' ? 'primary' : 'grey'"
+              />
               <span class="tipo-label">Recomendación</span>
             </div>
             <div
               class="tipo-card"
-              :class="{ active: tipo === 'REPORTE_BUG' }"
-              @click="tipo = 'REPORTE_BUG'"
+              :class="{ active: tipo === 'BUG_REPORT' }"
+              @click="tipo = 'BUG_REPORT'"
             >
-              <q-icon name="bug_report" size="32px" :color="tipo === 'REPORTE_BUG' ? 'negative' : 'grey'" />
+              <q-icon
+                name="bug_report"
+                size="32px"
+                :color="tipo === 'BUG_REPORT' ? 'negative' : 'grey'"
+              />
               <span class="tipo-label">Reportar Bug</span>
             </div>
           </div>
@@ -36,6 +44,7 @@
             placeholder="Breve resumen de tu feedback"
             dark
             outlined
+            maxlength="100"
             :rules="[val => !!val || 'El título es requerido']"
           />
         </div>
@@ -49,6 +58,7 @@
             dark
             outlined
             rows="5"
+            maxlength="1000"
             :rules="[val => !!val || 'La descripción es requerida']"
           />
         </div>
@@ -72,7 +82,9 @@
           <q-icon name="check_circle" size="64px" color="positive" />
         </div>
         <h2 class="success-title">¡Gracias por tu feedback!</h2>
-        <p class="success-desc">Tu opinión es muy valiosa para nosotros y nos ayuda a mejorar.</p>
+        <p class="success-desc"
+          >Tu opinión es muy valiosa para nosotros y nos ayuda a mejorar.</p
+        >
         <q-btn
           label="Enviar otro"
           color="primary"
@@ -88,7 +100,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useQuasar } from 'quasar'
-import api from '@/services/api'
+import feedbackService from '@/services/feedbackService'
 
 const $q = useQuasar()
 
@@ -100,20 +112,33 @@ const submitted = ref(false)
 
 async function submitFeedback() {
   if (!titulo.value || !descripcion.value) {
-    $q.notify({ type: 'warning', message: 'Completa todos los campos', position: 'top' })
+    $q.notify({
+      type: 'warning',
+      message: 'Completa todos los campos',
+      position: 'top'
+    })
     return
   }
   loading.value = true
   try {
-    await api.post('/api/Feedback', {
+    await feedbackService.create({
       tipo: tipo.value,
       titulo: titulo.value,
       descripcion: descripcion.value
     })
     submitted.value = true
-    $q.notify({ type: 'positive', message: 'Feedback enviado correctamente', position: 'top' })
+    $q.notify({
+      type: 'positive',
+      message: 'Feedback enviado correctamente',
+      position: 'top'
+    })
   } catch (err) {
-    $q.notify({ type: 'negative', message: err.response?.data?.message || 'Error al enviar feedback', position: 'top' })
+    console.error('Error sending feedback:', err.response?.data ?? err)
+    $q.notify({
+      type: 'negative',
+      message: err.response?.data?.message || 'Error al enviar feedback',
+      position: 'top'
+    })
   } finally {
     loading.value = false
   }
@@ -186,7 +211,10 @@ function resetForm() {
   border: 2px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
   background: rgba(255, 255, 255, 0.02);
 }
 
@@ -200,7 +228,7 @@ function resetForm() {
   background: rgba(124, 58, 237, 0.08);
 }
 
-.tipo-card.active:has(.q-icon[color="negative"]) {
+.tipo-card.active:has(.q-icon[color='negative']) {
   border-color: var(--color-negative);
   background: rgba(244, 63, 94, 0.08);
 }

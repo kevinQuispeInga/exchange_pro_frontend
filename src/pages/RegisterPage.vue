@@ -26,8 +26,10 @@
                   v-model="form.nombreCompleto"
                   outlined
                   dense
+                  dark
                   placeholder="Ej: Juan Pérez"
                   class="auth-input"
+                  maxlength="100"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
                 >
@@ -45,6 +47,7 @@
                   type="email"
                   outlined
                   dense
+                  dark
                   placeholder="tu@correo.com"
                   class="auth-input"
                   :rules="[
@@ -67,9 +70,14 @@
                   type="tel"
                   outlined
                   dense
+                  dark
                   placeholder="999888777"
                   class="auth-input"
-                  :rules="[val => !!val || 'Requerido']"
+                  maxlength="9"
+                  :rules="[
+                    val => !!val || 'Requerido',
+                    val => /^\d{9}$/.test(val) || 'Debe tener 9 dígitos'
+                  ]"
                   hide-bottom-space
                 >
                   <template v-slot:prepend
@@ -85,9 +93,14 @@
                   v-model="form.documentoIdentidad"
                   outlined
                   dense
+                  dark
                   placeholder="DNI o CE"
                   class="auth-input"
-                  :rules="[val => !!val || 'Requerido']"
+                  maxlength="8"
+                  :rules="[
+                    val => !!val || 'Requerido',
+                    val => /^\d{8}$/.test(val) || 'Debe tener 8 dígitos'
+                  ]"
                   hide-bottom-space
                 >
                   <template v-slot:prepend
@@ -104,8 +117,10 @@
                   :type="showPassword ? 'text' : 'password'"
                   outlined
                   dense
+                  dark
                   placeholder="••••••••"
                   class="auth-input"
+                  maxlength="50"
                   :rules="[
                     val => !!val || 'Requerido',
                     val => val.length >= 6 || 'Mín 6 car.'
@@ -134,11 +149,13 @@
                   :type="showConfirmPassword ? 'text' : 'password'"
                   outlined
                   dense
+                  dark
                   placeholder="••••••••"
                   class="auth-input"
+                  maxlength="50"
                   :rules="[
                     val => !!val || 'Requerido',
-                    val => val === form.Password || 'No coinciden'
+                    val => val === form.password || 'No coinciden'
                   ]"
                   hide-bottom-space
                 >
@@ -360,16 +377,15 @@ async function onSubmit() {
 
 .auth-input :deep(.q-field__control) {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
   min-height: 42px;
 }
 
 .auth-input :deep(.q-field__control:hover) {
-  border-color: var(--color-primary-light);
+  border-color: var(--color-primary-light) !important;
 }
 
 .auth-input :deep(.q-field--focused .q-field__control) {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 3px rgba(27, 58, 75, 0.08);
 }
 

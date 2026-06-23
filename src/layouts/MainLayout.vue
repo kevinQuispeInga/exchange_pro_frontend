@@ -22,8 +22,11 @@
             icon="notifications_none"
             size="md"
             class="notif-btn"
+            @click="$router.push('/notificaciones')"
           >
-            <q-badge floating color="negative" rounded>3</q-badge>
+            <q-badge floating color="negative" rounded>{{
+              unreadCount
+            }}</q-badge>
           </q-btn>
           <q-btn flat class="user-btn" no-caps>
             <div class="user-info row items-center no-wrap">
@@ -142,6 +145,7 @@
         </q-list>
       </q-scroll-area>
       <div class="drawer-footer">
+        <TipoCambioBar />
         <div class="footer-version">ExchangePro v1.0</div>
       </div>
     </q-drawer>
@@ -157,13 +161,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import EssentialLink from '@/components/EssentialLink.vue'
+import TipoCambioBar from '@/components/TipoCambioBar.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificacionStore } from '@/stores/notificacionStore'
 
 const $router = useRouter()
 const authStore = useAuthStore()
+const notificacionStore = useNotificacionStore()
+
+const unreadCount = computed(() => notificacionStore.unreadCount)
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    notificacionStore.cargarUnreadCount()
+  }
+})
 
 const leftDrawerOpen = ref(false)
 
@@ -178,7 +193,7 @@ function cerrarSesion() {
 }
 
 function irAPerfil() {
-  $router.push('/')
+  $router.push('/perfil')
 }
 
 function irAWallet() {
@@ -206,6 +221,7 @@ const operLinks = computed(() => [
 ])
 
 const financeLinks = computed(() => [
+  { title: 'Mi Perfil', icon: 'person', link: '#/perfil' },
   { title: 'Mi Wallet', icon: 'account_balance_wallet', link: '#/wallet' },
   { title: 'Datos de Pago', icon: 'credit_card', link: '#/datos-pago' },
   { title: 'Disputas', icon: 'gavel', link: '#/disputas' }
@@ -284,8 +300,15 @@ const adminLinks = computed(() => [
 }
 
 @keyframes notif-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
 }
 
 .notif-btn:hover {

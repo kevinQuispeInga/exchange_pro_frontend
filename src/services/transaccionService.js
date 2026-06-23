@@ -25,6 +25,10 @@ const transaccionService = {
     const { data } = await api.get(`/api/Transaccion/${id}/instrucciones`)
     return data
   },
+  async pagarConWallet(id) {
+    const { data } = await api.post(`/api/Transaccion/pagar-con-wallet/${id}`)
+    return data
+  },
   async marcarComoPagado(id, comprobante) {
     const formData = new FormData()
     formData.append('comprobante', comprobante)

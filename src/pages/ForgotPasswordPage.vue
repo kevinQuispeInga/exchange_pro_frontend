@@ -11,79 +11,67 @@
       <div class="auth-card-wrapper animate-scale-in">
         <div class="auth-brand">
           <div class="auth-brand__icon">
-            <q-icon name="currency_exchange" size="32px" color="white" />
+            <q-icon name="lock_reset" size="32px" color="white" />
           </div>
           <span class="auth-brand__name font-display">ExchangePro</span>
         </div>
-        <h1 class="auth-title font-display">Bienvenido de vuelta</h1>
-        <p class="auth-subtitle">Ingresa a tu cuenta para continuar</p>
-        <q-form @submit="onSubmit" class="auth-form">
-          <div class="field-group">
-            <label class="field-label">Correo electrónico</label>
-            <q-input
-              v-model="correo"
-              type="email"
-              outlined
-              dense
-              dark
-              placeholder="tu@correo.com"
-              class="auth-input"
-              :rules="[val => !!val || 'Ingresa tu correo']"
-              hide-bottom-space
-            >
-              <template v-slot:prepend>
-                <q-icon name="email" size="18px" class="input-icon" />
-              </template>
-            </q-input>
+        <h1 class="auth-title font-display">Recuperar contraseña</h1>
+        <p class="auth-subtitle">
+          Ingresa tu correo y te enviaremos un enlace de recuperación
+        </p>
+        <template v-if="!enviado">
+          <q-form
+            @submit="onSubmit"
+            class="auth-form"
+          >
+            <div class="field-group">
+              <label class="field-label">Correo electrónico</label>
+              <q-input
+                v-model="correo"
+                type="email"
+                outlined
+                dense
+                dark
+                placeholder="tu@correo.com"
+                class="auth-input"
+                :rules="[val => !!val || 'Ingresa tu correo']"
+                hide-bottom-space
+              >
+                <template v-slot:prepend>
+                  <q-icon name="email" size="18px" class="input-icon" />
+                </template>
+              </q-input>
+            </div>
+            <q-btn
+              label="Enviar enlace de recuperación"
+              type="submit"
+              color="primary"
+              unelevated
+              no-caps
+              class="auth-submit"
+              :loading="loading"
+              :disable="loading"
+            />
+          </q-form>
+          <div class="auth-footer-text">
+            ¿Recordaste tu contraseña?
+            <router-link to="/login" class="auth-link">Inicia sesión</router-link>
           </div>
-          <div class="field-group">
-            <label class="field-label">Contraseña</label>
-            <q-input
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              outlined
-              dense
-              dark
-              placeholder="••••••••"
-              class="auth-input"
-              :rules="[val => !!val || 'Ingresa tu contraseña']"
-              hide-bottom-space
-            >
-              <template v-slot:prepend>
-                <q-icon name="lock" size="18px" class="input-icon" />
-              </template>
-              <template v-slot:append>
-                <q-icon
-                  :name="showPassword ? 'visibility_off' : 'visibility'"
-                  size="18px"
-                  class="cursor-pointer input-icon"
-                  @click="showPassword = !showPassword"
-                />
-              </template>
-            </q-input>
+        </template>
+        <div v-else class="auth-form">
+          <div class="confirmation-message">
+            <q-icon name="check_circle" size="48px" color="positive" />
+            <p>Si el correo está registrado, recibirás un enlace de recuperación. Revisa también tu carpeta de Spam.</p>
           </div>
           <q-btn
-            label="Iniciar Sesión"
-            type="submit"
+            label="Volver al inicio de sesión"
             color="primary"
             unelevated
             no-caps
             class="auth-submit"
-            :loading="loading"
-            :disable="loading"
+            :to="'/login'"
           />
-          <div class="auth-footer-text">
-            <router-link to="/forgot-password" class="auth-link"
-              >¿Olvidaste tu contraseña?</router-link
-            >
-          </div>
-          <div class="auth-footer-text">
-            ¿No tienes cuenta?
-            <router-link to="/register" class="auth-link"
-              >Regístrate</router-link
-            >
-          </div>
-        </q-form>
+        </div>
       </div>
     </div>
   </div>
@@ -91,33 +79,24 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { useAuthStore } from '@/stores/authStore'
+import authService from '@/services/authService'
 
-const $router = useRouter()
 const $q = useQuasar()
-const authStore = useAuthStore()
 
 const correo = ref('')
-const password = ref('')
-const showPassword = ref(false)
 const loading = ref(false)
+const enviado = ref(false)
 
 async function onSubmit() {
   loading.value = true
   try {
-    await authStore.login(correo.value, password.value)
-    $q.notify({ type: 'positive', message: 'Sesión iniciada', position: 'top' })
-    if (authStore.isAdmin) {
-      $router.push('/admin/dashboard')
-    } else {
-      $router.push('/')
-    }
+    await authService.solicitarReset(correo.value)
+    enviado.value = true
   } catch (error) {
     $q.notify({
       type: 'negative',
-      message: error.response?.data?.error || 'Credenciales inválidas',
+      message: error.response?.data?.error || 'Error al solicitar recuperación',
       position: 'top'
     })
   } finally {
@@ -303,5 +282,16 @@ async function onSubmit() {
 
 .auth-link:hover {
   text-decoration: underline;
+}
+
+.confirmation-message {
+  text-align: center;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-body);
+  color: var(--color-text);
 }
 </style>

@@ -27,7 +27,15 @@ const routes = [
         component: () => import('@/pages/DatosPagoPage.vue')
       },
       { path: 'disputas', component: () => import('@/pages/DisputasPage.vue') },
-      { path: 'feedback', component: () => import('@/pages/UserFeedbackPage.vue') }
+      {
+        path: 'feedback',
+        component: () => import('@/pages/UserFeedbackPage.vue')
+      },
+      { path: 'perfil', component: () => import('@/pages/PerfilPage.vue') },
+      {
+        path: 'notificaciones',
+        component: () => import('@/pages/NotificacionesPage.vue')
+      }
     ]
   },
   {
@@ -45,6 +53,14 @@ const routes = [
       {
         path: 'feedback',
         component: () => import('@/pages/AdminFeedbackPage.vue')
+      },
+      {
+        path: 'reportes',
+        component: () => import('@/pages/AdminReportesPage.vue')
+      },
+      {
+        path: 'notificaciones',
+        component: () => import('@/pages/NotificacionesPage.vue')
       }
     ]
   },
@@ -55,6 +71,14 @@ const routes = [
   {
     path: '/register',
     component: () => import('@/pages/RegisterPage.vue')
+  },
+  {
+    path: '/forgot-password',
+    component: () => import('@/pages/ForgotPasswordPage.vue')
+  },
+  {
+    path: '/reset-password',
+    component: () => import('@/pages/ResetPasswordPage.vue')
   },
   {
     path: '/:catchAll(.*)*',

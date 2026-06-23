@@ -24,7 +24,7 @@
               :key="saldo.idMoneda"
               class="balance-chip font-mono"
             >
-              {{ monedaLabel(saldo.idMoneda) }}: S/
+              {{ monedaLabel(saldo.idMoneda) }}: {{ currencySymbol(saldo.idMoneda) }}
               {{ formatNumber(saldo.saldoDisponible) }}
             </span>
             <span v-if="walletStore.saldos.length === 0" class="text-muted"
@@ -54,8 +54,10 @@
                   :options="['COMPRA', 'VENTA']"
                   outlined
                   dense
+                  dark
                   placeholder="Seleccionar"
                   class="form-input"
+                  popup-content-class="select-popup-dark"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
                 />
@@ -69,10 +71,12 @@
                   :options="tasaOptions"
                   outlined
                   dense
+                  dark
                   placeholder="Seleccionar"
                   class="form-input"
                   emit-value
                   map-options
+                  popup-content-class="select-popup-dark"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
                 />
@@ -83,16 +87,22 @@
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Moneda a Entregar</label>
+                <label class="field-label">{{
+                  form.tipoOperacion === 'COMPRA'
+                    ? 'Moneda a Comprar'
+                    : 'Moneda a Vender'
+                }}</label>
                 <q-select
                   v-model="form.monedaEntrega"
                   :options="opcionesMoneda"
                   outlined
                   dense
+                  dark
                   placeholder="Seleccionar"
                   class="form-input"
                   emit-value
                   map-options
+                  popup-content-class="select-popup-dark"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
                 />
@@ -100,16 +110,22 @@
             </div>
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Moneda a Recibir</label>
+                <label class="field-label">{{
+                  form.tipoOperacion === 'COMPRA'
+                    ? 'Moneda a Pagar'
+                    : 'Moneda a Recibir'
+                }}</label>
                 <q-select
                   v-model="form.monedaRecibe"
                   :options="opcionesMoneda"
                   outlined
                   dense
+                  dark
                   placeholder="Seleccionar"
                   class="form-input"
                   emit-value
                   map-options
+                  popup-content-class="select-popup-dark"
                   :rules="[val => !!val || 'Requerido']"
                   hide-bottom-space
                 />
@@ -120,12 +136,13 @@
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Monto a Ofertado (S/)</label>
+                <label class="field-label">Monto a Ofertado ({{ monedaLabel(form.monedaEntrega) }})</label>
                 <q-input
                   v-model.number="form.montoOfertado"
                   type="number"
                   outlined
                   dense
+                  dark
                   placeholder="0.00"
                   class="form-input"
                   name="montoOfertado"
@@ -136,16 +153,28 @@
                   ]"
                   hide-bottom-space
                 />
+                <div
+                  v-if="form.montoOfertado > 0 && form.tasaCambio"
+                  class="conversion-preview"
+                >
+                  <span v-if="form.tipoOperacion === 'COMPRA'">
+                      Pagarás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio)) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                    </span>
+                    <span v-else>
+                      Recibirás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio)) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                  </span>
+                </div>
               </div>
             </div>
             <div class="col-12 col-sm-6">
               <div class="field-group">
-                <label class="field-label">Monto Mínimo (S/)</label>
+                <label class="field-label">Monto Mínimo ({{ monedaLabel(form.monedaEntrega) }})</label>
                 <q-input
                   v-model.number="form.montoMinimo"
                   type="number"
                   outlined
                   dense
+                  dark
                   placeholder="0.00"
                   class="form-input"
                   :rules="[
@@ -190,6 +219,7 @@ import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useOfertaStore } from '@/stores/ofertaStore'
 import { useWalletStore } from '@/stores/walletStore'
+import { currencySymbol } from '@/utils/formatCurrency'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -201,11 +231,14 @@ const loadingWallet = ref(true)
 
 const opcionesMoneda = [
   { label: 'PEN (Soles)', value: 1 },
-  { label: 'USD (Dólares)', value: 2 }
+  { label: 'USD (Dólares)', value: 2 },
+  { label: 'EUR (Euros)', value: 3 },
+  { label: 'JPY (Yenes)', value: 4 },
+  { label: 'GBP (Libras)', value: 5 }
 ]
 
 const tasaOptions = [
-  { label: '3.70 (PEN → USD)', value: 3.7 },
+  { label: '3.70', value: 3.7 },
   { label: '3.75', value: 3.75 },
   { label: '3.80', value: 3.8 },
   { label: '3.85', value: 3.85 },
@@ -225,6 +258,11 @@ const formatNumber = val => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
+}
+
+const calcularMontoRecibe = (monto, tasa) => {
+  if (!monto || !tasa) return 0
+  return monto * tasa
 }
 
 const form = ref({
@@ -419,8 +457,21 @@ const crearOferta = async () => {
 
 .form-input :deep(.q-field__control) {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
   min-height: 44px;
+}
+
+.form-input :deep(.q-field__native),
+.form-input :deep(.q-field__input) {
+  color: #ffffff !important;
+}
+
+.form-input :deep(.q-field__native span),
+.form-input :deep(.q-field__input span) {
+  color: #ffffff !important;
+}
+
+.form-input :deep(.q-select .q-field__native span) {
+  color: #ffffff !important;
 }
 
 .form-input :deep(.q-field--focused .q-field__control) {
@@ -444,5 +495,36 @@ const crearOferta = async () => {
   border-radius: var(--radius-sm);
   font-weight: 600;
   padding: 8px 24px;
+}
+
+.select-popup-dark .q-item {
+  color: #e2e8f0 !important;
+  background: #161f3a !important;
+}
+
+.select-popup-dark .q-item--active {
+  color: #ffffff !important;
+  background: rgba(124, 58, 237, 0.25) !important;
+}
+
+.select-popup-dark .q-item:hover {
+  background: rgba(124, 58, 237, 0.15) !important;
+}
+
+.conversion-preview {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(43, 122, 98, 0.06);
+  border: 1px solid rgba(43, 122, 98, 0.15);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.conversion-preview strong {
+  color: var(--color-positive);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
 </style>

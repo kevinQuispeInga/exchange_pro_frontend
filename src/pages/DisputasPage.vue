@@ -25,22 +25,45 @@
 
       <q-form @submit="abrirDisputa" class="dispute-card__body">
         <div class="field-group">
-          <label class="field-label">ID de Transacción</label>
-          <q-input
+          <label class="field-label">Transacción</label>
+          <q-select
             v-model="idTransaccion"
-            type="number"
+            :options="transaccionOptions"
             outlined
             dense
-            placeholder="Ingresa el ID"
+            dark
+            placeholder="Seleccionar transacción"
             class="dispute-input"
             :disable="!!transaccionIdPrefill"
-            :rules="[val => !!val || 'Requerido']"
+            emit-value
+            map-options
+            :rules="[val => !!val || 'Selecciona una transacción']"
             hide-bottom-space
           >
             <template v-slot:prepend>
               <q-icon name="tag" size="18px" class="input-icon" />
             </template>
-          </q-input>
+            <template v-slot:option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>
+                    <span class="font-mono">{{ scope.opt.codigo }}</span>
+                    <q-badge
+                      :color="estadoColor(scope.opt.estado)"
+                      rounded
+                      class="q-ml-sm"
+                      size="sm"
+                    >
+                      {{ scope.opt.estado }}
+                    </q-badge>
+                  </q-item-label>
+                  <q-item-label caption>
+                    S/ {{ formatNumber(scope.opt.monto) }} — {{ scope.opt.fecha }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
         </div>
 
         <div class="field-group">
@@ -49,8 +72,10 @@
             v-model="motivo"
             outlined
             dense
+            dark
             placeholder="Ej: No recibí el pago"
             class="dispute-input"
+            maxlength="200"
             :rules="[val => !!val || 'Requerido']"
             hide-bottom-space
           >
@@ -67,12 +92,45 @@
             type="textarea"
             outlined
             dense
+            dark
             placeholder="Describe qué ocurrió con la mayor cantidad de detalles posible..."
             class="dispute-input dispute-textarea"
+            maxlength="1000"
             :rules="[val => !!val || 'Requerido']"
             hide-bottom-space
             :input-style="{ minHeight: '100px' }"
           />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Evidencias (opcional)</label>
+          <div class="evidencia-info">
+            <q-icon name="info" size="16px" class="q-mr-xs" />
+            <span>JPG, PNG o PDF — Máximo 10 MB por archivo</span>
+          </div>
+          <q-file
+            v-model="evidencias"
+            label="Seleccionar archivos"
+            multiple
+            outlined
+            dense
+            dark
+            accept=".jpg,.jpeg,.png,.pdf"
+            class="dispute-input"
+            max-file-size="10485760"
+            hide-bottom-space
+          >
+            <template v-slot:prepend>
+              <q-icon name="attach_file" size="18px" class="input-icon" />
+            </template>
+          </q-file>
+          <div v-if="evidencias.length" class="evidencia-list">
+            <div v-for="(file, idx) in evidencias" :key="idx" class="evidencia-item">
+              <q-icon name="description" size="16px" />
+              <span class="evidencia-name">{{ file.name }}</span>
+              <span class="evidencia-size">({{ formatFileSize(file.size) }})</span>
+            </div>
+          </div>
         </div>
 
         <div class="dispute-warning">
@@ -108,25 +166,89 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
+import { useTransaccionStore } from '@/stores/transaccionStore'
 import disputaService from '@/services/disputaService'
 
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+const transaccionStore = useTransaccionStore()
 
 const idTransaccion = ref(null)
 const transaccionIdPrefill = ref(null)
 const motivo = ref('')
 const descripcion = ref('')
+const evidencias = ref([])
 const saving = ref(false)
+const loadingTransacciones = ref(true)
 
-onMounted(() => {
-  if (route.query.transaccionId) {
-    transaccionIdPrefill.value = Number(route.query.transaccionId)
-    idTransaccion.value = transaccionIdPrefill.value
+const transaccionOptions = computed(() =>
+  transaccionStore.transacciones
+    .filter(t => t.estado !== 'CANCELADA' && t.estado !== 'COMPLETADO' && t.estado !== 'EN_DISPUTA')
+    .map(t => ({
+      label: `${t.codigo} — S/ ${formatNumber(t.montoOperacion)}`,
+      value: t.idTransaccion,
+      codigo: t.codigo,
+      estado: t.estado,
+      monto: t.montoOperacion,
+      fecha: formatDate(t.fechaInicio)
+    }))
+)
+
+const formatNumber = val => {
+  if (val == null) return '0.00'
+  return Number(val).toLocaleString('es-PE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+const formatDate = dateStr => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('es-PE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatFileSize = bytes => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+const estadoColor = estado => {
+  const map = {
+    PENDIENTE: 'warning',
+    PAGADO: 'info',
+    COMPLETADO: 'positive',
+    CANCELADA: 'negative',
+    EN_DISPUTA: 'accent'
+  }
+  return map[estado] || 'grey'
+}
+
+onMounted(async () => {
+  try {
+    await transaccionStore.listarMisOperaciones()
+    if (route.query.transaccionId) {
+      const prefill = Number(route.query.transaccionId)
+      const exists = transaccionStore.transacciones.find(t => t.idTransaccion === prefill)
+      if (exists) {
+        transaccionIdPrefill.value = prefill
+        idTransaccion.value = prefill
+      }
+    }
+  } finally {
+    loadingTransacciones.value = false
   }
 })
 
@@ -141,11 +263,23 @@ const abrirDisputa = async () => {
   }
   saving.value = true
   try {
-    await disputaService.abrir({
-      idTransaccion: Number(idTransaccion.value),
+    const result = await disputaService.abrir({
+      idTransaccion: idTransaccion.value,
       motivo: motivo.value,
       descripcion: descripcion.value
     })
+
+    const idDisputa = result?.idDisputa
+    if (idDisputa && evidencias.value.length > 0) {
+      for (const file of evidencias.value) {
+        try {
+          await disputaService.subirEvidencia(idDisputa, file)
+        } catch {
+          // Si falla una evidencia, continuamos con las demás
+        }
+      }
+    }
+
     $q.notify({
       type: 'positive',
       message: 'Disputa abierta. Transacción congelada.',
@@ -261,12 +395,11 @@ const abrirDisputa = async () => {
 
 .dispute-input :deep(.q-field__control) {
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
   min-height: 44px;
 }
 
 .dispute-input :deep(.q-field--focused .q-field__control) {
-  border-color: var(--color-primary);
+  border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 3px rgba(27, 58, 75, 0.08);
 }
 
@@ -304,5 +437,43 @@ const abrirDisputa = async () => {
   border-radius: var(--radius-sm);
   font-weight: 600;
   padding: 8px 24px;
+}
+
+.evidencia-info {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.evidencia-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.evidencia-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(27, 58, 75, 0.05);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.evidencia-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidencia-size {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
 }
 </style>

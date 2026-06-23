@@ -30,7 +30,10 @@ export default defineRouter(() => {
     '/transacciones',
     '/datos-pago',
     '/disputas',
-    '/admin/disputas'
+    '/perfil',
+    '/notificaciones',
+    '/admin/disputas',
+    '/admin/reportes'
   ]
 
   Router.beforeEach(to => {
@@ -42,6 +45,14 @@ export default defineRouter(() => {
       !authStore.isAuthenticated
     ) {
       return '/login'
+    }
+
+    if (path === '/' && authStore.isAdmin) {
+      return '/admin/dashboard'
+    }
+
+    if (path === '/login' && authStore.isAdmin) {
+      return '/admin/dashboard'
     }
 
     if (path.startsWith('/admin') && !authStore.isAdmin) {
