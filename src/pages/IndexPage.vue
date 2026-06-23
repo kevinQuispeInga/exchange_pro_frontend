@@ -5,7 +5,7 @@
         <h1 class="dashboard__greeting font-display">
           {{
             authStore.isAuthenticated
-              ? `Hola, ${authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Usuario'}`
+              ? `Hola, ${authStore.user?.nombres || authStore.user?.correo?.split('@')[0] || 'Usuario'}`
               : 'Bienvenido a ExchangePro'
           }}
         </h1>
@@ -29,196 +29,13 @@
         />
       </div>
     </div>
-
-    <MarketRhythm
-      :active-offers="ofertaStore.ofertas.length"
-      class="q-mb-lg"
-    />
-
-    <div v-if="authStore.isAuthenticated" class="row q-col-gutter-md q-mb-lg">
-      <div class="col-12 col-sm-6 col-md-3" v-for="(stat, i) in stats" :key="i">
-        <StatCard
-          v-bind="stat"
-          :value="stat.computedValue"
-          interactive
-          @click="navigate(stat.route)"
-        />
-      </div>
-    </div>
-
-    <div class="dashboard__grid">
-      <div class="dashboard__section">
-        <div class="section-header">
-          <h2 class="section-title font-display">Últimas Ofertas</h2>
-          <q-btn
-            flat
-            label="Ver todas"
-            no-caps
-            color="primary"
-            to="/ofertas"
-            class="section-link"
-          />
-        </div>
-        <div v-if="ofertaStore.ofertas.length === 0" class="section-empty">
-          <p>Cargando ofertas...</p>
-        </div>
-        <div v-else class="ofertas-list">
-          <div
-            v-for="oferta in ofertaStore.ofertas.slice(0, 4)"
-            :key="oferta.idOferta"
-            class="oferta-row"
-          >
-            <div class="oferta-row__user">
-              <q-avatar size="28px" color="primary" text-color="white">
-                {{ oferta.nombreUsuario?.charAt(0) || '?' }}
-              </q-avatar>
-              <span class="oferta-row__name">{{ oferta.nombreUsuario }}</span>
-            </div>
-            <div class="oferta-row__type">
-              <q-badge
-                :color="oferta.tipoOperacion === 'VENTA' ? 'positive' : 'info'"
-                rounded
-                class="badge-sm"
-              >
-                {{ oferta.tipoOperacion }}
-              </q-badge>
-            </div>
-            <div class="oferta-row__rate font-mono">{{
-              Number(oferta.tasaCambio).toFixed(2)
-            }}</div>
-            <div class="oferta-row__amount font-mono"
-              >{{ Number(oferta.montoOfertado).toLocaleString('es-PE') }} {{ oferta.monedaEntregaCode || '' }}</div
-            >
-          </div>
-        </div>
-      </div>
-
-      <div class="dashboard__section">
-        <div class="section-header">
-          <h2 class="section-title font-display">Actividad Reciente</h2>
-          <q-btn
-            flat
-            label="Ver todo"
-            no-caps
-            color="primary"
-            to="/transacciones"
-            class="section-link"
-          />
-        </div>
-        <div v-if="!authStore.isAuthenticated" class="section-empty">
-          <p>Inicia sesión para ver tu actividad</p>
-        </div>
-        <div
-          v-else-if="transaccionStore.transacciones.length === 0"
-          class="section-empty"
-        >
-          <p>Aún no tienes transacciones</p>
-        </div>
-        <div v-else class="activity-list">
-          <div
-            v-for="trx in transaccionStore.transacciones.slice(0, 4)"
-            :key="trx.idTransaccion"
-            class="activity-row"
-            @click="$router.push(`/transacciones/${trx.idTransaccion}`)"
-          >
-            <div class="activity-row__code font-mono">{{ trx.codigo }}</div>
-            <q-badge :color="estadoColor(trx.estado)" rounded class="badge-sm">
-              {{ trx.estado }}
-            </q-badge>
-            <div class="activity-row__amount font-mono"
-              >{{ Number(trx.montoOperacion).toLocaleString('es-PE') }} {{ trx.monedaEntregaCode || '' }}</div
-            >
-          </div>
-        </div>
-      </div>
-    </div>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { useOfertaStore } from '@/stores/ofertaStore'
-import { useTransaccionStore } from '@/stores/transaccionStore'
-import { useWalletStore } from '@/stores/walletStore'
-import StatCard from '@/components/StatCard.vue'
-import MarketRhythm from '@/components/MarketRhythm.vue'
 
-const $router = useRouter()
 const authStore = useAuthStore()
-const ofertaStore = useOfertaStore()
-const transaccionStore = useTransaccionStore()
-const walletStore = useWalletStore()
-
-const stats = computed(() => [
-  {
-    label: 'Saldo Wallet',
-    icon: 'account_balance_wallet',
-    color: 'primary',
-    prefix: 'S/',
-    computedValue: walletStore.saldos.reduce(
-      (sum, s) => sum + (s.saldoDisponible || 0),
-      0
-    ),
-    decimals: 2,
-    subtext: `${walletStore.saldos.length} monedas`,
-    route: '/wallet'
-  },
-  {
-    label: 'Ofertas Activas',
-    icon: 'storefront',
-    color: 'accent',
-    computedValue: ofertaStore.ofertas.length,
-    subtext: 'En el mercado',
-    route: '/ofertas'
-  },
-  {
-    label: 'Mis Transacciones',
-    icon: 'swap_horiz',
-    color: 'info',
-    computedValue: transaccionStore.transacciones.length,
-    subtext: 'Total de operaciones',
-    route: '/transacciones'
-  },
-  {
-    label: 'Mi Rol',
-    icon: 'verified_user',
-    color: 'positive',
-    computedValue: authStore.isAdmin ? 'Administrador' : 'Usuario',
-    animated: false,
-    route: '/transacciones'
-  }
-])
-
-function navigate(route) {
-  $router.push(route)
-}
-
-function estadoColor(estado) {
-  const map = {
-    PENDIENTE: 'warning',
-    PAGADO: 'info',
-    COMPLETADO: 'positive',
-    CANCELADO: 'negative',
-    EN_DISPUTA: 'accent'
-  }
-  return map[estado] || 'grey'
-}
-
-onMounted(async () => {
-  try {
-    await ofertaStore.listarActivas()
-  } catch (_) {}
-  if (authStore.isAuthenticated) {
-    try {
-      await walletStore.cargarSaldo()
-    } catch (_) {}
-    try {
-      await transaccionStore.listarMisOperaciones()
-    } catch (_) {}
-  }
-})
 </script>
 
 <style scoped>

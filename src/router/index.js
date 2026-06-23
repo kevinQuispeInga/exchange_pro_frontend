@@ -23,33 +23,9 @@ export default defineRouter(() => {
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE)
   })
 
-  const protectedRoutes = [
-    '/mis-ofertas',
-    '/ofertas/crear',
-    '/wallet',
-    '/transacciones',
-    '/datos-pago',
-    '/disputas',
-    '/perfil',
-    '/notificaciones',
-    '/admin/disputas',
-    '/admin/reportes'
-  ]
-
   Router.beforeEach(to => {
     const authStore = useAuthStore()
     const path = to.path
-
-    if (
-      protectedRoutes.some(prefix => path.startsWith(prefix)) &&
-      !authStore.isAuthenticated
-    ) {
-      return '/login'
-    }
-
-    if (path === '/' && authStore.isAdmin) {
-      return '/admin/dashboard'
-    }
 
     if (path === '/login' && authStore.isAdmin) {
       return '/admin/dashboard'

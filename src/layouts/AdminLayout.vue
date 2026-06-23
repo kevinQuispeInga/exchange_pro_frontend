@@ -2,26 +2,7 @@
   <q-layout view="lHh Lpr lFf" class="admin-layout" dark>
     <q-header class="admin-header">
       <q-toolbar class="admin-toolbar">
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          class="admin-menu-btn"
-          @click="toggleDrawer"
-        />
         <q-space />
-        <q-btn
-          flat
-          dense
-          round
-          icon="notifications"
-          size="md"
-          class="admin-notif-btn"
-          @click="$router.push('/admin/notificaciones')"
-        >
-          <q-badge floating color="negative" rounded>{{ unreadCount }}</q-badge>
-        </q-btn>
         <q-btn flat class="admin-user-btn" no-caps>
           <q-avatar
             size="30px"
@@ -32,81 +13,11 @@
             <q-icon name="shield" size="16px" />
           </q-avatar>
           <span class="admin-user-name q-ml-sm">{{
-            authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Admin'
+            authStore.user?.nombres || authStore.user?.correo?.split('@')[0] || 'Admin'
           }}</span>
         </q-btn>
       </q-toolbar>
     </q-header>
-
-    <q-drawer
-      v-model="drawerOpen"
-      show-if-above
-      :width="240"
-      class="admin-drawer"
-    >
-      <div class="drawer-header">
-        <div class="drawer-logo">
-          <div class="drawer-logo-icon">
-            <q-icon name="currency_exchange" size="24px" color="white" />
-          </div>
-          <span class="drawer-brand font-display text-gradient"
-            >Admin Panel</span
-          >
-        </div>
-      </div>
-
-      <q-scroll-area class="drawer-scroll">
-        <q-list padding class="drawer-nav">
-          <q-item
-            v-for="item in navItems"
-            :key="item.label"
-            clickable
-            :active="isActive(item.link)"
-            active-class="nav-active"
-            class="drawer-nav-item"
-            @click="navigate(item.link)"
-          >
-            <q-item-section avatar class="nav-item-icon">
-              <q-icon :name="item.icon" size="20px" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label class="nav-item-label">{{
-                item.label
-              }}</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-scroll-area>
-
-      <div class="drawer-footer">
-        <TipoCambioBar />
-        <div class="admin-profile">
-          <q-avatar
-            size="36px"
-            color="primary"
-            text-color="white"
-            class="profile-avatar"
-          >
-            {{ authStore.user?.nombres?.charAt(0)?.toUpperCase() || authStore.user?.correo?.charAt(0)?.toUpperCase() || 'A' }}
-          </q-avatar>
-          <div class="profile-info">
-            <div class="profile-name">{{
-              authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'Admin'
-            }}</div>
-            <div class="profile-role">Administrador</div>
-          </div>
-        </div>
-        <q-btn
-          flat
-          dense
-          no-caps
-          icon="logout"
-          label="Cerrar Sesión"
-          class="logout-btn"
-          @click="cerrarSesion"
-        />
-      </div>
-    </q-drawer>
 
     <q-page-container class="admin-content">
       <router-view v-slot="{ Component }">
@@ -119,57 +30,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { useNotificacionStore } from '@/stores/notificacionStore'
-import TipoCambioBar from '@/components/TipoCambioBar.vue'
 
-const $router = useRouter()
-const $route = useRoute()
 const authStore = useAuthStore()
-const notificacionStore = useNotificacionStore()
-
-const unreadCount = computed(() => notificacionStore.unreadCount)
-
-onMounted(() => {
-  if (authStore.isAuthenticated) {
-    notificacionStore.cargarUnreadCount()
-  }
-})
-
-const drawerOpen = ref(false)
-
-const navItems = computed(() => {
-  const items = [
-    { label: 'Dashboard', icon: 'dashboard', link: '/admin/dashboard' },
-    { label: 'Disputas', icon: 'gavel', link: '/admin/disputas' },
-    { label: 'Feedback', icon: 'feedback', link: '/admin/feedback' },
-    { label: 'Reportes', icon: 'bar_chart', link: '/admin/reportes' }
-  ]
-  return items
-})
-
-function isActive(link) {
-  return $route.path.startsWith(link)
-}
-
-function navigate(link) {
-  $router.push(link)
-  if (window.innerWidth < 1024) {
-    drawerOpen.value = false
-  }
-}
-
-function toggleDrawer() {
-  drawerOpen.value = !drawerOpen.value
-}
-
-function cerrarSesion() {
-  authStore.logout()
-  drawerOpen.value = false
-  $router.push('/login')
-}
 </script>
 
 <style scoped>
