@@ -13,7 +13,14 @@ export default defineConfig((/* ctx */) => {
     },
 
     devServer: {
-      open: true
+      open: true,
+      port: 9000,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5238',
+          changeOrigin: true
+        }
+      }
     },
 
     framework: {
