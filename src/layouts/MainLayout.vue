@@ -2,19 +2,76 @@
   <q-layout view="lHh Lpr lFf" class="main-layout" dark>
     <q-header class="main-header">
       <q-toolbar class="main-toolbar">
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          class="menu-btn"
+          @click="toggleLeftDrawer"
+        />
         <q-toolbar-title class="main-title">
           <span class="logo-mark font-display text-gradient">ExchangePro</span>
         </q-toolbar-title>
         <div v-if="authStore.isAuthenticated" class="user-section">
+          <q-btn
+            flat
+            dense
+            round
+            icon="notifications_none"
+            size="md"
+            class="notif-btn"
+            @click="$router.push('/notificaciones')"
+          >
+            <q-badge floating color="negative" rounded>{{
+              unreadCount
+            }}</q-badge>
+          </q-btn>
           <q-btn flat class="user-btn" no-caps>
             <div class="user-info row items-center no-wrap">
               <q-avatar size="32px" class="user-avatar">
                 <q-icon name="person" size="18px" />
               </q-avatar>
               <span class="user-name q-ml-sm">{{
-                authStore.user?.nombres || authStore.user?.correo?.split('@')[0] || 'User'
+                authStore.user?.nombres || authStore.user?.nombreCompleto || authStore.user?.correo?.split('@')[0] || 'User'
               }}</span>
+              <q-icon name="arrow_drop_down" size="20px" class="q-ml-xs" />
             </div>
+            <q-menu class="user-menu" anchor="bottom right" self="top right">
+              <q-list style="min-width: 180px">
+                <q-item clickable v-close-popup @click="irAPerfil">
+                  <q-item-section avatar
+                    ><q-icon name="person" size="20px"
+                  /></q-item-section>
+                  <q-item-section
+                    ><q-item-label>Mi Perfil</q-item-label></q-item-section
+                  >
+                </q-item>
+                <q-item clickable v-close-popup @click="irAWallet">
+                  <q-item-section avatar
+                    ><q-icon name="account_balance_wallet" size="20px"
+                  /></q-item-section>
+                  <q-item-section
+                    ><q-item-label>Mi Wallet</q-item-label></q-item-section
+                  >
+                </q-item>
+                <q-separator />
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="cerrarSesion"
+                  class="text-negative"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="logout" size="20px" color="negative" />
+                  </q-item-section>
+                  <q-item-section
+                    ><q-item-label>Cerrar Sesión</q-item-label></q-item-section
+                  >
+                </q-item>
+              </q-list>
+            </q-menu>
           </q-btn>
         </div>
         <div v-else class="user-section">
@@ -30,6 +87,69 @@
       </q-toolbar>
     </q-header>
 
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      :width="240"
+      class="main-drawer"
+    >
+      <div class="drawer-header">
+        <div class="drawer-logo">
+          <div class="drawer-logo-icon">
+            <q-icon name="currency_exchange" size="24px" color="white" />
+          </div>
+          <span class="drawer-brand font-display text-gradient"
+            >ExchangePro</span
+          >
+        </div>
+      </div>
+      <q-scroll-area class="drawer-scroll">
+        <q-list padding class="nav-list">
+          <div class="nav-section-label">General</div>
+          <EssentialLink
+            v-for="link in mainLinks"
+            :key="link.title"
+            v-bind="link"
+          />
+          <template v-if="authStore.isAuthenticated">
+            <div class="nav-section-label">Operaciones</div>
+            <EssentialLink
+              v-for="link in operLinks"
+              :key="link.title"
+              v-bind="link"
+            />
+            <div class="nav-section-label">Finanzas</div>
+            <EssentialLink
+              v-for="link in financeLinks"
+              :key="link.title"
+              v-bind="link"
+            />
+          </template>
+          <template v-if="authStore.isAuthenticated">
+            <div class="nav-section-label">Soporte</div>
+            <EssentialLink
+              v-for="link in supportLinks"
+              :key="link.title"
+              v-bind="link"
+            />
+          </template>
+          <template v-if="authStore.isAdmin">
+            <div class="nav-section-label">Administración</div>
+            <EssentialLink
+              v-for="link in adminLinks"
+              :key="link.title"
+              v-bind="link"
+            />
+          </template>
+        </q-list>
+      </q-scroll-area>
+      <div class="drawer-footer">
+        <TipoCambioBar />
+        <div class="footer-version">ExchangePro v1.0</div>
+      </div>
+    </q-drawer>
+
     <q-page-container class="page-container">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
@@ -41,9 +161,83 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import EssentialLink from '@/components/EssentialLink.vue'
+import TipoCambioBar from '@/components/TipoCambioBar.vue'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificacionStore } from '@/stores/notificacionStore'
 
+const $router = useRouter()
 const authStore = useAuthStore()
+const notificacionStore = useNotificacionStore()
+
+const unreadCount = computed(() => notificacionStore.unreadCount)
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    notificacionStore.cargarUnreadCount()
+  }
+})
+
+const leftDrawerOpen = ref(false)
+
+function toggleLeftDrawer() {
+  leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+function cerrarSesion() {
+  authStore.logout()
+  leftDrawerOpen.value = false
+  $router.push('/login')
+}
+
+function irAPerfil() {
+  $router.push('/perfil')
+}
+
+function irAWallet() {
+  $router.push('/wallet')
+}
+
+const mainLinks = computed(() => [
+  { title: 'Inicio', icon: 'home', link: '#/' },
+  {
+    title: 'Ofertas',
+    icon: 'storefront',
+    link: '#/ofertas',
+    badge: authStore.isAuthenticated ? 'Live' : null
+  }
+])
+
+const operLinks = computed(() => [
+  { title: 'Mis Ofertas', icon: 'assignment', link: '#/mis-ofertas' },
+  {
+    title: 'Crear Oferta',
+    icon: 'add_circle_outline',
+    link: '#/ofertas/crear'
+  },
+  { title: 'Transacciones', icon: 'swap_horiz', link: '#/transacciones' }
+])
+
+const financeLinks = computed(() => [
+  { title: 'Mi Perfil', icon: 'person', link: '#/perfil' },
+  { title: 'Mi Wallet', icon: 'account_balance_wallet', link: '#/wallet' },
+  { title: 'Datos de Pago', icon: 'credit_card', link: '#/datos-pago' },
+  { title: 'Disputas', icon: 'gavel', link: '#/disputas' }
+])
+
+const supportLinks = computed(() => [
+  { title: 'Enviar Feedback', icon: 'feedback', link: '#/feedback' }
+])
+
+const adminLinks = computed(() => [
+  {
+    title: 'Panel Admin',
+    icon: 'admin_panel_settings',
+    link: '#/admin/dashboard'
+  }
+])
 </script>
 
 <style scoped>
