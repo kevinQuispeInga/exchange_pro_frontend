@@ -9,7 +9,11 @@ export default defineConfig((/* ctx */) => {
     extras: ['roboto-font', 'material-icons'],
 
     build: {
-      vueRouterMode: 'hash'
+      vueRouterMode: 'hash',
+      extendViteConf (viteConf) {
+        if (!viteConf.server) viteConf.server = {}
+        viteConf.server.allowedHosts = true
+      }
     },
 
     devServer: {

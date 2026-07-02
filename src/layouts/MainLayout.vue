@@ -161,22 +161,83 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import EssentialLink from '@/components/EssentialLink.vue'
 import TipoCambioBar from '@/components/TipoCambioBar.vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificacionStore } from '@/stores/notificacionStore'
+import notificacionService from '@/services/notificacionService'
 
 const $router = useRouter()
+const $q = useQuasar()
 const authStore = useAuthStore()
 const notificacionStore = useNotificacionStore()
 
 const unreadCount = computed(() => notificacionStore.unreadCount)
+const notificationInterval = ref(null)
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
     notificacionStore.cargarUnreadCount()
+
+    // Configurar sondeo (polling) de notificaciones cada 5 segundos
+    notificationInterval.value = setInterval(async () => {
+      if (!authStore.isAuthenticated) return
+      
+      const oldCount = notificacionStore.unreadCount
+      await notificacionStore.cargarUnreadCount()
+      const newCount = notificacionStore.unreadCount
+
+      if (newCount > oldCount) {
+        try {
+          const list = await notificacionService.obtener()
+          const ultima = list[0]
+          if (ultima && !ultima.leido) {
+            $q.notify({
+              type: 'info',
+              message: `${ultima.titulo}: ${ultima.mensaje}`,
+              position: 'top-right',
+              timeout: 5000,
+              icon: 'notifications_active',
+              actions: [
+                {
+                  label: 'Ver',
+                  color: 'white',
+                  handler: () => {
+                    $router.push('/notificaciones')
+                  }
+                }
+              ]
+            })
+          }
+        } catch (e) {
+          $q.notify({
+            type: 'info',
+            message: 'Tienes nuevas notificaciones sin leer.',
+            position: 'top-right',
+            timeout: 5000,
+            icon: 'notifications_active',
+            actions: [
+              {
+                label: 'Ver',
+                color: 'white',
+                handler: () => {
+                  $router.push('/notificaciones')
+                }
+              }
+            ]
+          })
+        }
+      }
+    }, 5000)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (notificationInterval.value) {
+    clearInterval(notificationInterval.value)
   }
 })
 
@@ -187,6 +248,9 @@ function toggleLeftDrawer() {
 }
 
 function cerrarSesion() {
+  if (notificationInterval.value) {
+    clearInterval(notificationInterval.value)
+  }
   authStore.logout()
   leftDrawerOpen.value = false
   $router.push('/login')

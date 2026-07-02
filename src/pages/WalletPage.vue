@@ -19,8 +19,22 @@
           </div>
           <div class="wallet-hero__info">
             <span class="wallet-hero__id font-mono">Wallet #{{ walletStore.idWallet || '—' }}</span>
-            <span class="wallet-hero__label">Saldo total disponible</span>
-            <span class="wallet-hero__balance font-display">{{ formatCurrency(totalDisponible, null) }}</span>
+            <div class="flex items-center justify-between q-mt-xs q-mb-xs wrap gap-xs">
+              <span class="wallet-hero__label">Saldo total disponible</span>
+              <div class="currency-pills">
+                <button
+                  v-for="m in monedas"
+                  :key="m.value"
+                  type="button"
+                  class="currency-pill"
+                  :class="{ 'currency-pill--active': monedaVisualizacion === m.code }"
+                  @click="monedaVisualizacion = m.code"
+                >
+                  {{ m.code }}
+                </button>
+              </div>
+            </div>
+            <span class="wallet-hero__balance font-display">{{ formatCurrency(totalDisponible, null, monedaVisualizacion) }}</span>
           </div>
         </div>
         <div class="wallet-hero__actions">
@@ -289,6 +303,7 @@ import walletService from '@/services/walletService'
 import retiroService from '@/services/retiroService'
 import movimientoWalletService from '@/services/movimientoWalletService'
 import datosPagoService from '@/services/datosPagoService'
+import tipoCambioService from '@/services/tipoCambioService'
 import EmptyState from '@/components/EmptyState.vue'
 import { formatNumber, formatCurrency, currencySymbol } from '@/utils/formatCurrency'
 
@@ -326,8 +341,52 @@ const filterOptions = [
   ...monedas.map(m => ({ label: m.code, value: m.value }))
 ]
 
+const tasasCambio = ref([])
+const monedaVisualizacion = ref('PEN')
+
+const convertToPen = (monto, idMoneda) => {
+  if (!monto) return 0
+  if (idMoneda === 1) return monto // PEN ya es Soles
+
+  const code = monedas.find(m => m.value === idMoneda)?.code
+  const tasa = tasasCambio.value.find(t => t.codigo === code)
+  if (tasa && tasa.mid) {
+    return monto * tasa.mid
+  }
+
+  // Fallbacks de tasas de cambio locales por si falla la API
+  const fallbacks = {
+    2: 3.75,  // USD
+    3: 4.08,  // EUR
+    4: 0.024, // JPY
+    5: 4.80   // GBP
+  }
+  return monto * (fallbacks[idMoneda] || 1)
+}
+
+const convertCurrency = (monto, fromId, toCode) => {
+  if (!monto) return 0
+  const montoEnPen = convertToPen(monto, fromId)
+  if (toCode === 'PEN') return montoEnPen
+
+  const tasa = tasasCambio.value.find(t => t.codigo === toCode)
+  if (tasa && tasa.mid) {
+    return montoEnPen / tasa.mid
+  }
+
+  // Fallbacks por si falla la API
+  const fallbacks = {
+    USD: 3.75,
+    EUR: 4.08,
+    JPY: 0.024,
+    GBP: 4.80
+  }
+  const rate = fallbacks[toCode] || 1
+  return montoEnPen / rate
+}
+
 const totalDisponible = computed(() =>
-  walletStore.saldos.reduce((sum, s) => sum + (s.saldoDisponible || 0), 0)
+  walletStore.saldos.reduce((sum, s) => sum + convertCurrency(s.saldoDisponible, s.idMoneda, monedaVisualizacion.value), 0)
 )
 
 const recargaSaldo = computed(() =>
@@ -461,6 +520,12 @@ onMounted(async () => {
   try {
     await walletStore.cargarSaldo()
     await cargarMovimientos()
+    try {
+      const data = await tipoCambioService.obtener()
+      tasasCambio.value = data.monedas || []
+    } catch (e) {
+      console.error('Error al cargar tipos de cambio para la billetera:', e)
+    }
   } finally {
     loading.value = false
   }
@@ -556,6 +621,41 @@ const retirarSaldo = async () => {
 .wallet-hero__id { font-size: 0.75rem; font-weight: 500; opacity: 0.8; }
 .wallet-hero__label { font-family: var(--font-body); font-size: 0.8rem; opacity: 0.85; }
 .wallet-hero__balance { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+
+/* Selector de moneda en la cabecera */
+.currency-pills {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 3px;
+  border-radius: 20px;
+  align-items: center;
+  transform: translateY(2px); /* Centrado óptico respecto al texto lateral */
+}
+
+.currency-pill {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.currency-pill:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.currency-pill--active {
+  background: white;
+  color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
 
 .wallet-hero__actions { display: flex; gap: 8px; flex-shrink: 0; }
 

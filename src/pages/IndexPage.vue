@@ -136,8 +136,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import tipoCambioService from '@/services/tipoCambioService'
 import { useAuthStore } from '@/stores/authStore'
 import { useOfertaStore } from '@/stores/ofertaStore'
 import { useTransaccionStore } from '@/stores/transaccionStore'
@@ -151,6 +152,35 @@ const ofertaStore = useOfertaStore()
 const transaccionStore = useTransaccionStore()
 const walletStore = useWalletStore()
 
+const tasasCambio = ref([])
+
+const convertToPen = (monto, idMoneda) => {
+  if (!monto) return 0
+  if (idMoneda === 1) return monto // PEN ya es Soles
+
+  const codigos = {
+    1: 'PEN',
+    2: 'USD',
+    3: 'EUR',
+    4: 'JPY',
+    5: 'GBP'
+  }
+  const code = codigos[idMoneda]
+  const tasa = tasasCambio.value.find(t => t.codigo === code)
+  if (tasa && tasa.mid) {
+    return monto * tasa.mid
+  }
+
+  // Fallbacks de tasas de cambio locales por si falla la API
+  const fallbacks = {
+    2: 3.75,  // USD
+    3: 4.08,  // EUR
+    4: 0.024, // JPY
+    5: 4.80   // GBP
+  }
+  return monto * (fallbacks[idMoneda] || 1)
+}
+
 const stats = computed(() => [
   {
     label: 'Saldo Wallet',
@@ -158,7 +188,7 @@ const stats = computed(() => [
     color: 'primary',
     prefix: 'S/',
     computedValue: walletStore.saldos.reduce(
-      (sum, s) => sum + (s.saldoDisponible || 0),
+      (sum, s) => sum + convertToPen(s.saldoDisponible, s.idMoneda),
       0
     ),
     decimals: 2,
@@ -216,6 +246,10 @@ onMounted(async () => {
     } catch (_) {}
     try {
       await transaccionStore.listarMisOperaciones()
+    } catch (_) {}
+    try {
+      const data = await tipoCambioService.obtener()
+      tasasCambio.value = data.monedas || []
     } catch (_) {}
   }
 })
