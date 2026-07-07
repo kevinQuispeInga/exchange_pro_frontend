@@ -161,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import EssentialLink from '@/components/EssentialLink.vue'
@@ -178,44 +178,30 @@ const notificacionStore = useNotificacionStore()
 const unreadCount = computed(() => notificacionStore.unreadCount)
 const notificationInterval = ref(null)
 
-onMounted(() => {
-  if (authStore.isAuthenticated) {
-    notificacionStore.cargarUnreadCount()
+const iniciarSondeo = () => {
+  if (notificationInterval.value) return // ya está corriendo
+  
+  notificacionStore.cargarUnreadCount()
 
-    // Configurar sondeo (polling) de notificaciones cada 5 segundos
-    notificationInterval.value = setInterval(async () => {
-      if (!authStore.isAuthenticated) return
-      
-      const oldCount = notificacionStore.unreadCount
-      await notificacionStore.cargarUnreadCount()
-      const newCount = notificacionStore.unreadCount
+  // Configurar sondeo (polling) de notificaciones cada 5 segundos
+  notificationInterval.value = setInterval(async () => {
+    if (!authStore.isAuthenticated) {
+      detenerSondeo()
+      return
+    }
+    
+    const oldCount = notificacionStore.unreadCount
+    await notificacionStore.cargarUnreadCount()
+    const newCount = notificacionStore.unreadCount
 
-      if (newCount > oldCount) {
-        try {
-          const list = await notificacionService.obtener()
-          const ultima = list[0]
-          if (ultima && !ultima.leido) {
-            $q.notify({
-              type: 'info',
-              message: `${ultima.titulo}: ${ultima.mensaje}`,
-              position: 'top-right',
-              timeout: 5000,
-              icon: 'notifications_active',
-              actions: [
-                {
-                  label: 'Ver',
-                  color: 'white',
-                  handler: () => {
-                    $router.push('/notificaciones')
-                  }
-                }
-              ]
-            })
-          }
-        } catch (e) {
+    if (newCount > oldCount) {
+      try {
+        const list = await notificacionService.obtener()
+        const ultima = list[0]
+        if (ultima && !ultima.leido) {
           $q.notify({
             type: 'info',
-            message: 'Tienes nuevas notificaciones sin leer.',
+            message: `${ultima.titulo}: ${ultima.mensaje}`,
             position: 'top-right',
             timeout: 5000,
             icon: 'notifications_active',
@@ -230,15 +216,46 @@ onMounted(() => {
             ]
           })
         }
+      } catch (e) {
+        $q.notify({
+          type: 'info',
+          message: 'Tienes nuevas notificaciones sin leer.',
+          position: 'top-right',
+          timeout: 5000,
+          icon: 'notifications_active',
+          actions: [
+            {
+              label: 'Ver',
+              color: 'white',
+              handler: () => {
+                $router.push('/notificaciones')
+              }
+            }
+          ]
+        })
       }
-    }, 5000)
-  }
-})
+    }
+  }, 5000)
+}
 
-onBeforeUnmount(() => {
+const detenerSondeo = () => {
   if (notificationInterval.value) {
     clearInterval(notificationInterval.value)
+    notificationInterval.value = null
   }
+}
+
+// Observar el estado de autenticación para iniciar/detener el sondeo de forma dinámica
+watch(() => authStore.isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    iniciarSondeo()
+  } else {
+    detenerSondeo()
+  }
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  detenerSondeo()
 })
 
 const leftDrawerOpen = ref(false)
@@ -495,5 +512,6 @@ const adminLinks = computed(() => [
 .page-container {
   min-height: 100vh;
   background: var(--color-bg);
+  padding-bottom: 88px;
 }
 </style>
