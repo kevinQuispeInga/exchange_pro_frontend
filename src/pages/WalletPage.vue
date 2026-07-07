@@ -418,23 +418,49 @@ const currencyIdByCode = code => {
 }
 
 const typeLabel = tipo => {
-  const labels = { RECARGA: 'Recarga', RETIRO: 'Retiro', COMPRA_VENTA: 'Compra/Venta', PAGO_WALLET: 'Pago Wallet' }
+  const labels = { 
+    RECARGA: 'Recarga', 
+    RETIRO: 'Retiro', 
+    COMPRA_VENTA: 'Compra/Venta', 
+    PAGO_WALLET: 'Pago Wallet',
+    TRANSFERENCIA_ENTRADA: 'Transferencia Entrada',
+    TRANSFERENCIA_SALIDA: 'Transferencia Salida'
+  }
   return labels[tipo] || tipo
 }
 
 const typeIcon = tipo => {
-  const icons = { RECARGA: 'arrow_downward', RETIRO: 'arrow_upward', COMPRA_VENTA: 'swap_horiz', PAGO_WALLET: 'payment' }
+  const icons = { 
+    RECARGA: 'arrow_upward', 
+    RETIRO: 'arrow_downward', 
+    COMPRA_VENTA: 'swap_horiz', 
+    PAGO_WALLET: 'payment',
+    TRANSFERENCIA_ENTRADA: 'arrow_upward',
+    TRANSFERENCIA_SALIDA: 'arrow_downward'
+  }
   return icons[tipo] || 'circle'
 }
 
 const typeClass = tipo => {
-  const map = { RECARGA: 'in', RETIRO: 'out', COMPRA_VENTA: 'swap', PAGO_WALLET: 'pay' }
+  const map = { 
+    RECARGA: 'in', 
+    RETIRO: 'out', 
+    COMPRA_VENTA: 'swap', 
+    PAGO_WALLET: 'pay',
+    TRANSFERENCIA_ENTRADA: 'in',
+    TRANSFERENCIA_SALIDA: 'out'
+  }
   return map[tipo] || 'other'
 }
 
-const amountClass = tipo => tipo === 'RECARGA' ? 'amount--positive' : 'amount--negative'
+const amountClass = tipo => {
+  const t = tipo?.toUpperCase()
+  return (t === 'RECARGA' || t === 'TRANSFERENCIA_ENTRADA') ? 'amount--positive' : 'amount--negative'
+}
 
-const sign = tipo => tipo === 'RECARGA' ? '+' : '−'
+const sign = tipo => {
+  const t = tipo?.toUpperCase()
+  return (t === 'RECARGA' || t === 'TRANSFERENCIA_ENTRADA') ? '+' : '−'}
 
 const formatDate = dateStr => {
   if (!dateStr) return '—'
@@ -532,6 +558,7 @@ onMounted(async () => {
 })
 
 const recargarSaldo = async () => {
+  if (recargando.value) return
   recargando.value = true
   try {
     await walletStore.recargar({ ...recarga.value })
@@ -548,6 +575,7 @@ const recargarSaldo = async () => {
 }
 
 const retirarSaldo = async () => {
+  if (retirando.value) return
   retirando.value = true
   try {
     await retiroService.solicitar({
