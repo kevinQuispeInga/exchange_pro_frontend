@@ -121,9 +121,9 @@
             class="activity-row"
             @click="$router.push(`/transacciones/${trx.idTransaccion}`)"
           >
-            <div class="activity-row__code font-mono">{{ trx.codigo }}</div>
+            <div class="activity-row__code">{{ getTrxTypeLabel(trx) }}</div>
             <q-badge :color="estadoColor(trx.estado)" rounded class="badge-sm">
-              {{ trx.estado }}
+              {{ formatEstado(trx.estado) }}
             </q-badge>
             <div class="activity-row__amount font-mono"
               >{{ Number(trx.montoOperacion).toLocaleString('es-PE') }} {{ trx.monedaEntregaCode || '' }}</div
@@ -234,6 +234,25 @@ function estadoColor(estado) {
     EN_DISPUTA: 'accent'
   }
   return map[estado] || 'grey'
+}
+
+const formatEstado = estado => {
+  if (!estado) return ''
+  const map = {
+    PENDIENTE: 'Pendiente',
+    PAGADO: 'Pagado',
+    COMPLETADO: 'Completado',
+    CANCELADO: 'Cancelado',
+    CANCELADA: 'Cancelado',
+    EN_DISPUTA: 'En Disputa'
+  }
+  return map[estado] || estado.replace(/_/g, ' ')
+}
+
+const getTrxTypeLabel = (trx) => {
+  const isComprador = trx.compradorId === authStore.user?.idUsuario
+  const moneda = trx.monedaEntregaCode || 'divisas'
+  return isComprador ? `Compra de ${moneda}` : `Venta de ${moneda}`
 }
 
 onMounted(async () => {
