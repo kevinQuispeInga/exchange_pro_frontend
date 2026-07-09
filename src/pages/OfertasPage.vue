@@ -32,92 +32,164 @@
       @action="$router.push('/ofertas/crear')"
     />
 
-    <div v-else class="ofertas-grid">
-      <div
-        v-for="oferta in ofertasVisibles"
-        :key="oferta.idOferta"
-        class="oferta-card"
-      >
-        <div class="oferta-card__header">
-          <div class="oferta-card__user">
-            <q-avatar
-              size="32px"
-              color="primary"
-              text-color="white"
-              class="oferta-card__avatar"
+    <div v-else-if="ofertasVisibles.length > 0">
+      <!-- Sección de Filtros de Mercado -->
+      <div class="filters-container q-mb-lg">
+        <div class="filters-wrapper">
+          <div class="filter-item">
+            <label class="filter-label">Tipo de operación</label>
+            <q-select
+              v-model="filterTipo"
+              :options="tipoOptions"
+              outlined
+              dense
+              dark
+              emit-value
+              map-options
+              class="filter-select"
             >
-              {{ oferta.nombreUsuario?.charAt(0)?.toUpperCase() || '?' }}
-            </q-avatar>
-            <div>
-              <div class="oferta-card__username">{{
-                oferta.nombreUsuario
-              }}</div>
-              <div class="oferta-card__id">ID #{{ oferta.idOferta }}</div>
+              <template v-slot:prepend>
+                <q-icon name="swap_horiz" size="18px" class="filter-icon" />
+              </template>
+            </q-select>
+          </div>
+
+          <div class="filter-item">
+            <label class="filter-label">Moneda</label>
+            <q-select
+              v-model="filterMoneda"
+              :options="monedaOptions"
+              outlined
+              dense
+              dark
+              emit-value
+              map-options
+              class="filter-select"
+            >
+              <template v-slot:prepend>
+                <q-icon name="monetization_on" size="18px" class="filter-icon" />
+              </template>
+            </q-select>
+          </div>
+
+          <div class="filter-item">
+            <label class="filter-label">Monto a cambiar</label>
+            <q-input
+              v-model.number="filterMonto"
+              type="number"
+              outlined
+              dense
+              dark
+              placeholder="Ej: 500"
+              class="filter-input"
+              hide-bottom-space
+            >
+              <template v-slot:prepend>
+                <q-icon name="payments" size="18px" class="filter-icon" />
+              </template>
+            </q-input>
+          </div>
+        </div>
+        
+        <div class="filters-info text-caption text-grey-5 flex items-center">
+          <q-icon name="info" size="14px" class="q-mr-xs text-primary" />
+          <span>Mostrando {{ ofertasFiltradas.length }} de {{ ofertasVisibles.length }} ofertas</span>
+        </div>
+      </div>
+
+      <div v-if="ofertasFiltradas.length === 0" class="flex flex-center q-pa-xl column text-center empty-filter-container">
+        <q-icon name="filter_alt_off" size="48px" class="text-grey-6 q-mb-md" />
+        <div class="text-h6 text-grey-5 font-display">No hay resultados</div>
+        <div class="text-caption text-grey-6 q-mt-xs">Intenta cambiar los filtros seleccionados</div>
+      </div>
+
+      <div v-else class="ofertas-grid">
+        <div
+          v-for="oferta in ofertasFiltradas"
+          :key="oferta.idOferta"
+          class="oferta-card"
+        >
+          <div class="oferta-card__header">
+            <div class="oferta-card__user">
+              <q-avatar
+                size="32px"
+                color="primary"
+                text-color="white"
+                class="oferta-card__avatar"
+              >
+                {{ oferta.nombreUsuario?.charAt(0)?.toUpperCase() || '?' }}
+              </q-avatar>
+              <div>
+                <div class="oferta-card__username">{{
+                  oferta.nombreUsuario
+                }}</div>
+                <div class="oferta-card__id">ID #{{ oferta.idOferta }}</div>
+              </div>
+            </div>
+            <q-badge
+              :color="oferta.tipoOperacion === 'VENTA' ? 'positive' : 'info'"
+              rounded
+              class="oferta-card__type-badge"
+            >
+              <q-icon
+                :name="
+                  oferta.tipoOperacion === 'VENTA'
+                    ? 'trending_down'
+                    : 'trending_up'
+                "
+                size="14px"
+                class="q-mr-xs"
+              />
+              {{ oferta.tipoOperacion }}
+            </q-badge>
+          </div>
+
+          <div class="oferta-card__body">
+            <div class="oferta-card__stat">
+              <span class="stat-label">Monto</span>
+              <span class="stat-value font-mono"
+                >{{ formatNumber(oferta.montoOfertado) }}
+                {{ currencySymbol(null, oferta.monedaEntregaCode) }}</span
+              >
+            </div>
+            <div class="oferta-card__divider"></div>
+            <div class="oferta-card__stat">
+              <span class="stat-label">Tasa</span>
+              <span class="stat-value font-mono text-accent">{{
+                formatNumber(oferta.tasaCambio, 3)
+              }}</span>
+            </div>
+            <div class="oferta-card__divider"></div>
+            <div class="oferta-card__stat">
+              <span class="stat-label">Mínimo</span>
+              <span class="stat-value font-mono"
+                >{{ formatNumber(oferta.montoMinimo) }}
+                {{ currencySymbol(null, oferta.monedaEntregaCode) }}</span
+              >
             </div>
           </div>
-          <q-badge
-            :color="oferta.tipoOperacion === 'VENTA' ? 'positive' : 'info'"
-            rounded
-            class="oferta-card__type-badge"
-          >
-            <q-icon
-              :name="
-                oferta.tipoOperacion === 'VENTA'
-                  ? 'trending_down'
-                  : 'trending_up'
-              "
-              size="14px"
-              class="q-mr-xs"
+
+          <div class="oferta-card__actions">
+            <q-btn
+              v-if="authStore.isAuthenticated"
+              color="primary"
+              label="Tomar Oferta"
+              icon="shopping_cart"
+              no-caps
+              unelevated
+              class="oferta-card__btn"
+              @click="abrirDialogo(oferta)"
             />
-            {{ oferta.tipoOperacion }}
-          </q-badge>
-        </div>
-
-        <div class="oferta-card__body">
-          <div class="oferta-card__stat">
-            <span class="stat-label">Monto</span>
-            <span class="stat-value font-mono"
-              >{{ formatNumber(oferta.montoOfertado) }}
-              {{ currencySymbol(null, oferta.monedaEntregaCode) }}</span
-            >
+            <q-btn
+              v-else
+              color="primary"
+              label="Inicia sesión para participar"
+              outline
+              no-caps
+              class="oferta-card__btn"
+              @click="$router.push('/login')"
+            />
           </div>
-          <div class="oferta-card__divider"></div>
-          <div class="oferta-card__stat">
-            <span class="stat-label">Tasa</span>
-            <span class="stat-value font-mono text-accent">{{
-              formatNumber(oferta.tasaCambio, 3)
-            }}</span>
-          </div>
-          <div class="oferta-card__divider"></div>
-          <div class="oferta-card__stat">
-            <span class="stat-label">Mínimo</span>
-            <span class="stat-value font-mono"
-              >{{ formatNumber(oferta.montoMinimo) }}
-              {{ currencySymbol(null, oferta.monedaEntregaCode) }}</span
-            >
-          </div>
-        </div>
-
-        <div class="oferta-card__actions">
-          <q-btn
-            v-if="authStore.isAuthenticated"
-            color="primary"
-            label="Tomar Oferta"
-            icon="shopping_cart"
-            no-caps
-            unelevated
-            class="oferta-card__btn"
-            @click="abrirDialogo(oferta)"
-          />
-          <q-btn
-            v-else
-            color="primary"
-            label="Inicia sesión para participar"
-            outline
-            no-caps
-            class="oferta-card__btn"
-            @click="$router.push('/login')"
-          />
         </div>
       </div>
     </div>
@@ -576,10 +648,67 @@ const opcionesMetodoPago = [
 
 const metodosDisponibles = ref([...opcionesMetodoPago])
 
+// Filtros reactivos de mercado
+const filterTipo = ref('TODAS')
+const filterMoneda = ref('TODAS')
+const filterMonto = ref(null)
+
+const tipoOptions = [
+  { label: 'Todos los tipos', value: 'TODAS' },
+  { label: 'Compra', value: 'COMPRA' },
+  { label: 'Venta', value: 'VENTA' }
+]
+
+const monedaOptions = computed(() => {
+  const options = [{ label: 'Todas las monedas', value: 'TODAS' }]
+  const codigos = [...new Set(ofertasVisibles.value.map(o => o.monedaEntregaCode).filter(Boolean))]
+  
+  codigos.forEach(code => {
+    let name = code
+    if (code === 'PEN') name = 'PEN (Soles)'
+    else if (code === 'USD') name = 'USD (Dólares)'
+    else if (code === 'EUR') name = 'EUR (Euros)'
+    else if (code === 'GBP') name = 'GBP (Libras)'
+    else if (code === 'JPY') name = 'JPY (Yenes)'
+    
+    options.push({ label: name, value: code })
+  })
+  
+  return options
+})
+
 const ofertasVisibles = computed(() => {
   const uid = authStore.userId
   if (uid == null) return ofertaStore.ofertas
   return ofertaStore.ofertas.filter(o => Number(o.idUsuario) !== Number(uid))
+})
+
+const ofertasFiltradas = computed(() => {
+  let list = ofertasVisibles.value
+  
+  // 1. Filtrar por Tipo de operación
+  if (filterTipo.value !== 'TODAS') {
+    list = list.filter(o => o.tipoOperacion === filterTipo.value)
+  }
+  
+  // 2. Filtrar por Moneda
+  if (filterMoneda.value !== 'TODAS') {
+    list = list.filter(o => o.monedaEntregaCode === filterMoneda.value)
+  }
+  
+  // 3. Filtrar por Monto (dentro del rango de la oferta)
+  if (filterMonto.value != null && filterMonto.value > 0) {
+    list = list.filter(o => filterMonto.value >= o.montoMinimo && filterMonto.value <= o.montoOfertado)
+  }
+  
+  // 4. Ordenar por Fecha de publicación descendente (más nuevas primero)
+  list = [...list].sort((a, b) => {
+    const valA = a.fechaPublicacion ? new Date(a.fechaPublicacion).getTime() : (a.idOferta || 0)
+    const valB = b.fechaPublicacion ? new Date(b.fechaPublicacion).getTime() : (b.idOferta || 0)
+    return valB - valA
+  })
+  
+  return list
 })
 
 function formatNumber(val, decimals = 2) {
@@ -883,6 +1012,59 @@ onMounted(async () => {
   margin: 0 auto;
 }
 
+/* Estilos de Filtros */
+.filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+
+.filters-wrapper {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.filter-select {
+  width: 200px;
+  border-radius: var(--radius-sm);
+}
+
+.filter-input {
+  width: 180px;
+  border-radius: var(--radius-sm);
+}
+
+.filter-icon {
+  color: var(--color-primary);
+}
+
+.empty-filter-container {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  min-height: 250px;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -917,6 +1099,19 @@ onMounted(async () => {
   .page-header {
     flex-direction: column;
     gap: 12px;
+  }
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+  .filters-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .filter-select,
+  .filter-input {
+    width: 100%;
   }
 }
 
