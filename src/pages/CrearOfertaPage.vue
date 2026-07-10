@@ -111,9 +111,7 @@
                 />
               </div>
             </div>
-          </div>
 
-          <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
               <div class="field-group">
                 <label class="field-label">Tasa de Cambio</label>
@@ -138,9 +136,31 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="row q-col-gutter-md">
+            <!-- Card de Balance - Ancho Completo -->
+            <div class="col-12 q-my-xs">
+              <div v-if="monedaGarantiaId" class="balance-status-card">
+                <div class="balance-status-card__header">
+                  <q-icon name="account_balance_wallet" size="20px" color="primary" />
+                  <span class="balance-status-card__title font-display">Saldo en tu Billetera</span>
+                </div>
+                <div class="balance-status-card__body q-mt-xs">
+                  <div class="balance-status-card__val font-mono">
+                    {{ formatNumber(saldoGarantia) }} {{ monedaLabel(monedaGarantiaId) }}
+                  </div>
+                  <div class="balance-status-card__hint">
+                    Saldo disponible para esta operación. Al publicar, se retendrá el monto de garantía en escrow.
+                  </div>
+                </div>
+              </div>
+              <div v-else class="balance-status-card balance-status-card--placeholder">
+                <q-icon name="info" size="20px" class="text-grey-5" />
+                <div class="balance-status-card__placeholder-text">
+                  Selecciona la operación y las monedas para ver tu saldo disponible.
+                </div>
+              </div>
+            </div>
+
             <div class="col-12 col-sm-6">
               <div class="field-group">
                 <label class="field-label">Monto a Ofertar ({{ monedaLabel(form.monedaEntrega) }})</label>
@@ -165,14 +185,15 @@
                   class="conversion-preview"
                 >
                   <span v-if="form.tipoOperacion === 'COMPRA'">
-                      Pagarás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
-                    </span>
-                    <span v-else>
-                      Recibirás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                    Pagarás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
+                  </span>
+                  <span v-else>
+                    Recibirás ≈ <strong>{{ formatNumber(calcularMontoRecibe(form.montoOfertado, form.tasaCambio), 3) }} {{ monedaLabel(form.monedaRecibe) }}</strong>
                   </span>
                 </div>
               </div>
             </div>
+
             <div class="col-12 col-sm-6">
               <div class="field-group">
                 <label class="field-label">Monto Mínimo por operación ({{ monedaLabel(form.monedaEntrega) }})</label>
@@ -306,6 +327,18 @@ const form = ref({
   montoOfertado: null,
   montoMinimo: null,
   tasaCambio: null
+})
+
+const monedaGarantiaId = computed(() => {
+  if (!form.value.tipoOperacion) return null
+  return form.value.tipoOperacion === 'COMPRA' ? form.value.monedaRecibe : form.value.monedaEntrega
+})
+
+const saldoGarantia = computed(() => {
+  const mId = monedaGarantiaId.value
+  if (!mId) return null
+  const saldoObj = walletStore.saldos.find(s => s.idMoneda === mId)
+  return saldoObj ? (saldoObj.saldoDisponible ?? 0) : 0
 })
 
 watch(
@@ -642,5 +675,54 @@ const crearOferta = async () => {
   color: var(--color-positive);
   font-family: var(--font-mono);
   font-size: 0.85rem;
+}
+
+.balance-status-card {
+  background: rgba(124, 58, 237, 0.04);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  width: 100%;
+  align-self: center;
+  transition: all 0.3s ease;
+}
+
+.balance-status-card--placeholder {
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.balance-status-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance-status-card__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.balance-status-card__val {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.balance-status-card__hint {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.balance-status-card__placeholder-text {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 </style>
