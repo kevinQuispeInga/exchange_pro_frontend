@@ -33,75 +33,129 @@
       @action="$router.push('/ofertas/crear')"
     />
 
-    <div v-else class="ofertas-grid">
-      <div
-        v-for="oferta in ofertaStore.misOfertas"
-        :key="oferta.idOferta"
-        class="oferta-card"
-      >
-        <div class="oferta-card__top">
-          <q-badge
-            :color="oferta.tipoOperacion === 'COMPRA' ? 'info' : 'positive'"
-            rounded
-            class="badge-type"
-          >
-            {{ oferta.tipoOperacion }}
-          </q-badge>
-          <q-badge
-            :color="estadoColor(oferta.estado)"
-            rounded
-            class="badge-estado"
-          >
-            {{ oferta.estado }}
-          </q-badge>
-        </div>
+    <div v-else-if="ofertaStore.misOfertas.length > 0">
+      <!-- Sección de Filtros -->
+      <div class="filters-container q-mb-lg">
+        <div class="filters-wrapper">
+          <div class="filter-item">
+            <label class="filter-label">Estado</label>
+            <q-select
+              v-model="filterEstado"
+              :options="estadoOptions"
+              outlined
+              dense
+              dark
+              emit-value
+              map-options
+              class="filter-select"
+            >
+              <template v-slot:prepend>
+                <q-icon name="filter_list" size="18px" class="filter-icon" />
+              </template>
+            </q-select>
+          </div>
 
-        <div class="oferta-card__body">
-          <div class="oferta-card__row">
-            <span class="row-label">Monto Ofertado</span>
-            <span class="row-value font-mono"
-              >{{ formatNumber(oferta.montoOfertado) }} {{ oferta.monedaEntregaCode || '' }}</span
+          <div class="filter-item">
+            <label class="filter-label">Tipo de operación</label>
+            <q-select
+              v-model="filterTipo"
+              :options="tipoOptions"
+              outlined
+              dense
+              dark
+              emit-value
+              map-options
+              class="filter-select"
             >
-          </div>
-          <div class="oferta-card__row">
-            <span class="row-label">Monto Mínimo</span>
-            <span class="row-value font-mono"
-              >{{ formatNumber(oferta.montoMinimo) }} {{ oferta.monedaEntregaCode || '' }}</span
-            >
-          </div>
-          <div class="oferta-card__row">
-            <span class="row-label">Tasa de Cambio</span>
-            <span class="row-value font-mono text-accent">{{
-              formatNumber(oferta.tasaCambio)
-            }}</span>
-          </div>
-          <div class="oferta-card__row" v-if="oferta.monedaRecibeCode">
-            <span class="row-label">Recibes</span>
-            <span class="row-value font-mono">{{ oferta.monedaRecibeCode }}</span>
+              <template v-slot:prepend>
+                <q-icon name="swap_horiz" size="18px" class="filter-icon" />
+              </template>
+            </q-select>
           </div>
         </div>
+        
+        <div class="filters-info text-caption text-grey-5 flex items-center">
+          <q-icon name="info" size="14px" class="q-mr-xs text-primary" />
+          <span>Mostrando {{ ofertasFiltradas.length }} de {{ ofertaStore.misOfertas.length }} ofertas</span>
+        </div>
+      </div>
 
-        <div class="oferta-card__actions">
-          <q-btn
-            v-if="oferta.estado === 'ACTIVA'"
-            color="primary"
-            label="Ver matches"
-            icon="search"
-            outline
-            no-caps
-            class="btn-matches"
-            @click="verMatches(oferta)"
-          />
-          <q-btn
-            v-if="oferta.estado === 'ACTIVA'"
-            color="negative"
-            label="Cancelar Oferta"
-            icon="cancel"
-            outline
-            no-caps
-            class="btn-cancelar"
-            @click="confirmarCancelar(oferta.idOferta)"
-          />
+      <div v-if="ofertasFiltradas.length === 0" class="flex flex-center q-pa-xl column text-center empty-filter-container">
+        <q-icon name="filter_alt_off" size="48px" class="text-grey-6 q-mb-md" />
+        <div class="text-h6 text-grey-5 font-display">No hay resultados</div>
+        <div class="text-caption text-grey-6 q-mt-xs">Intenta cambiar los filtros seleccionados</div>
+      </div>
+
+      <div v-else class="ofertas-grid">
+        <div
+          v-for="oferta in ofertasFiltradas"
+          :key="oferta.idOferta"
+          class="oferta-card"
+        >
+          <div class="oferta-card__top">
+            <q-badge
+              :color="oferta.tipoOperacion === 'COMPRA' ? 'info' : 'positive'"
+              rounded
+              class="badge-type"
+            >
+              {{ oferta.tipoOperacion }}
+            </q-badge>
+            <q-badge
+              :color="estadoColor(oferta.estado)"
+              rounded
+              class="badge-estado"
+            >
+              {{ oferta.estado }}
+            </q-badge>
+          </div>
+
+          <div class="oferta-card__body">
+            <div class="oferta-card__row">
+              <span class="row-label">Monto Ofertado</span>
+              <span class="row-value font-mono"
+                >{{ formatNumber(oferta.montoOfertado) }} {{ oferta.monedaEntregaCode || '' }}</span
+              >
+            </div>
+            <div class="oferta-card__row">
+              <span class="row-label">Monto Mínimo</span>
+              <span class="row-value font-mono"
+                >{{ formatNumber(oferta.montoMinimo) }} {{ oferta.monedaEntregaCode || '' }}</span
+              >
+            </div>
+            <div class="oferta-card__row">
+              <span class="row-label">Tasa de Cambio</span>
+              <span class="row-value font-mono text-accent">{{
+                formatNumber(oferta.tasaCambio)
+              }}</span>
+            </div>
+            <div class="oferta-card__row" v-if="oferta.monedaRecibeCode">
+              <span class="row-label">Recibes</span>
+              <span class="row-value font-mono">{{ oferta.monedaRecibeCode }}</span>
+            </div>
+          </div>
+
+          <div class="oferta-card__actions">
+            <q-btn
+              v-if="oferta.estado === 'ACTIVA'"
+              color="primary"
+              label="Ver matches"
+              icon="search"
+              outline
+              no-caps
+              class="btn-matches"
+              @click="verMatches(oferta)"
+            />
+            <q-btn
+              v-if="oferta.estado === 'ACTIVA'"
+              color="negative"
+              label="Cancelar Oferta"
+              icon="cancel"
+              outline
+              no-caps
+              class="btn-cancelar"
+              @click="confirmarCancelar(oferta.idOferta)"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -180,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useOfertaStore } from '@/stores/ofertaStore'
@@ -197,6 +251,49 @@ const matchesDialog = ref(false)
 const matches = ref([])
 const matchesCargando = ref(false)
 const ofertaMatchesRef = ref(null)
+
+// Filtros reactivos
+const filterEstado = ref('TODAS')
+const filterTipo = ref('TODAS')
+
+const estadoOptions = [
+  { label: 'Todos los estados', value: 'TODAS' },
+  { label: 'Activas', value: 'ACTIVA' },
+  { label: 'Completadas', value: 'COMPLETADA' },
+  { label: 'Canceladas', value: 'CANCELADA' }
+]
+
+const tipoOptions = [
+  { label: 'Todos los tipos', value: 'TODAS' },
+  { label: 'Compra', value: 'COMPRA' },
+  { label: 'Venta', value: 'VENTA' }
+]
+
+// Lógica de filtrado y ordenación (ACTIVAS primero, luego por FechaPublicacion/IdOferta desc)
+const ofertasFiltradas = computed(() => {
+  let list = [...ofertaStore.misOfertas]
+  
+  if (filterEstado.value !== 'TODAS') {
+    list = list.filter(o => o.estado === filterEstado.value)
+  }
+  
+  if (filterTipo.value !== 'TODAS') {
+    list = list.filter(o => o.tipoOperacion === filterTipo.value)
+  }
+  
+  list.sort((a, b) => {
+    // ACTIVAS primero
+    if (a.estado === 'ACTIVA' && b.estado !== 'ACTIVA') return -1
+    if (a.estado !== 'ACTIVA' && b.estado === 'ACTIVA') return 1
+    
+    // Si tienen la misma prioridad de estado, ordenar por fecha o id (descendente)
+    const valA = a.fechaPublicacion ? new Date(a.fechaPublicacion).getTime() : (a.idOferta || 0)
+    const valB = b.fechaPublicacion ? new Date(b.fechaPublicacion).getTime() : (b.idOferta || 0)
+    return valB - valA
+  })
+  
+  return list
+})
 
 const estadoColor = estado => {
   const map = {
@@ -296,6 +393,54 @@ const confirmarCancelar = id => {
   margin: 0 auto;
 }
 
+/* Estilos de Filtros */
+.filters-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+
+.filters-wrapper {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.filter-select {
+  width: 200px;
+  border-radius: var(--radius-sm);
+}
+
+.filter-icon {
+  color: var(--color-primary);
+}
+
+.empty-filter-container {
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  min-height: 250px;
+}
+
 .page-header {
   display: flex;
   align-items: flex-start;
@@ -330,6 +475,18 @@ const confirmarCancelar = id => {
   .page-header {
     flex-direction: column;
     gap: 12px;
+  }
+  .filters-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+  .filters-wrapper {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .filter-select {
+    width: 100%;
   }
 }
 

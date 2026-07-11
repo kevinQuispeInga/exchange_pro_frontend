@@ -30,7 +30,7 @@
           </div>
         </div>
         <q-badge :color="estadoColor" rounded class="detail-hero__badge">
-          {{ transaccion.estado }}
+          {{ formatEstado(transaccion.estado) }}
         </q-badge>
       </div>
 
@@ -417,6 +417,7 @@
             @click="cancelarTransaccion"
           />
           <q-btn
+            v-if="transaccion.estado !== 'EN_DISPUTA' && transaccion.estado !== 'COMPLETADO' && transaccion.estado !== 'CANCELADO'"
             color="warning"
             label="Abrir Disputa"
             icon="gavel"
@@ -717,6 +718,19 @@ const estadoColor = computed(() => {
   }
   return map[transaccion.value?.estado] || 'grey'
 })
+
+const formatEstado = estado => {
+  if (!estado) return ''
+  const map = {
+    PENDIENTE: 'Pendiente',
+    PAGADO: 'Pagado',
+    COMPLETADO: 'Completado',
+    CANCELADO: 'Cancelado',
+    CANCELADA: 'Cancelado',
+    EN_DISPUTA: 'En Disputa'
+  }
+  return map[estado] || estado.replace(/_/g, ' ')
+}
 
 const timelineSteps = computed(() => {
   const estado = transaccion.value?.estado

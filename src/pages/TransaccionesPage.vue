@@ -56,7 +56,7 @@
               <span class="trx-card__id">#{{ t.idTransaccion }}</span>
             </div>
             <q-badge :color="estadoColor(t.estado)" rounded class="trx-card__badge">
-              {{ t.estado }}
+              {{ formatEstado(t.estado) }}
             </q-badge>
           </div>
 
@@ -116,7 +116,7 @@ const filters = [
   { key: 'PAGADO', label: 'Pagadas' },
   { key: 'COMPLETADO', label: 'Completadas' },
   { key: 'EN_DISPUTA', label: 'Disputa' },
-  { key: 'CANCELADA', label: 'Canceladas' }
+  { key: 'CANCELADO', label: 'Canceladas' }
 ]
 
 const filtered = computed(() =>
@@ -140,10 +140,24 @@ const estadoColor = estado => {
     PENDIENTE: 'warning',
     PAGADO: 'info',
     COMPLETADO: 'positive',
+    CANCELADO: 'negative',
     CANCELADA: 'negative',
     EN_DISPUTA: 'accent'
   }
   return map[estado] || 'grey'
+}
+
+const formatEstado = estado => {
+  if (!estado) return ''
+  const map = {
+    PENDIENTE: 'Pendiente',
+    PAGADO: 'Pagado',
+    COMPLETADO: 'Completado',
+    CANCELADO: 'Cancelado',
+    CANCELADA: 'Cancelado',
+    EN_DISPUTA: 'En Disputa'
+  }
+  return map[estado] || estado.replace(/_/g, ' ')
 }
 
 const formatNumber = val => {
