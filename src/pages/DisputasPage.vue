@@ -54,7 +54,7 @@
                       class="q-ml-sm"
                       size="sm"
                     >
-                      {{ scope.opt.estado }}
+                      {{ formatEstado(scope.opt.estado) }}
                     </q-badge>
                   </q-item-label>
                   <q-item-label caption>
@@ -187,7 +187,14 @@ const loadingTransacciones = ref(true)
 
 const transaccionOptions = computed(() =>
   transaccionStore.transacciones
-    .filter(t => t.estado !== 'CANCELADA' && t.estado !== 'COMPLETADO' && t.estado !== 'EN_DISPUTA')
+    .filter(t => 
+      t.estado !== 'CANCELADO' && 
+      t.estado !== 'CANCELADA' && 
+      t.estado !== 'COMPLETADO' && 
+      t.estado !== 'COMPLETADA' && 
+      t.estado !== 'DISPUTA' && 
+      t.estado !== 'EN_DISPUTA'
+    )
     .map(t => ({
       label: `${t.codigo} — S/ ${formatNumber(t.montoOperacion)}`,
       value: t.idTransaccion,
@@ -234,6 +241,19 @@ const estadoColor = estado => {
     EN_DISPUTA: 'accent'
   }
   return map[estado] || 'grey'
+}
+
+const formatEstado = estado => {
+  if (!estado) return ''
+  const map = {
+    PENDIENTE: 'Pendiente',
+    PAGADO: 'Pagado',
+    COMPLETADO: 'Completado',
+    CANCELADO: 'Cancelado',
+    CANCELADA: 'Cancelado',
+    EN_DISPUTA: 'En Disputa'
+  }
+  return map[estado] || estado.replace(/_/g, ' ')
 }
 
 onMounted(async () => {

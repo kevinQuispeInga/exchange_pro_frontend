@@ -139,7 +139,7 @@
                     size="xs"
                     class="q-ml-xs"
                   >
-                    {{ item.transaccionEstado }}
+                    {{ formatEstado(item.transaccionEstado) }}
                   </q-badge>
                 </div>
                 <div class="detail-item">
@@ -411,6 +411,19 @@ const cargarDisputas = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const formatEstado = estado => {
+  if (!estado) return ''
+  const map = {
+    PENDIENTE: 'Pendiente',
+    PAGADO: 'Pagado',
+    COMPLETADO: 'Completado',
+    CANCELADO: 'Cancelado',
+    CANCELADA: 'Cancelado',
+    EN_DISPUTA: 'En Disputa'
+  }
+  return map[estado] || estado.replace(/_/g, ' ')
 }
 
 onMounted(cargarDisputas)
